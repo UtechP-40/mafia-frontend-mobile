@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug React Native",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "android",
+      "sourceMaps": true,
+      "outDir": "${workspaceFolder}/.vscode/.react"
+    },
+    {
+      "name": "Debug iOS",
+      "type": "reactnative",
+      "request": "launch",
+      "platform": "ios",
+      "sourceMaps": true,
+      "outDir": "${workspaceFolder}/.vscode/.react"
+    },
+    {
+      "name": "Debug Expo",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/expo/bin/cli.js",
+      "args": ["start"],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}

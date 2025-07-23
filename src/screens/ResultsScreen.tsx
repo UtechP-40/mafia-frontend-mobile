@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-export const GameScreen: React.FC = () => {
+export const ResultsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Game in Progress</Text>
-      <Text style={styles.subtitle}>Mafia game interface</Text>
+      <Text style={styles.title}>Game Results</Text>
+      <Text style={styles.subtitle}>Match summary and statistics</Text>
     </View>
   );
 };
