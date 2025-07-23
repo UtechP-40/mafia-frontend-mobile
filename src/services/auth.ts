@@ -7,7 +7,7 @@ const USER_KEY = 'user_data';
 class AuthService {
   async login(credentials: { username: string; password: string }) {
     try {
-      const response = await apiService.login(credentials);
+      const response: any = await apiService.login(credentials);
       
       if (response.token) {
         await storageService.setItem(TOKEN_KEY, response.token);
@@ -22,7 +22,7 @@ class AuthService {
 
   async register(userData: { username: string; email: string; password: string }) {
     try {
-      const response = await apiService.register(userData);
+      const response: any = await apiService.register(userData);
       
       if (response.token) {
         await storageService.setItem(TOKEN_KEY, response.token);
