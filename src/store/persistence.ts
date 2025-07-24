@@ -4,6 +4,8 @@ import { combineReducers } from '@reduxjs/toolkit';
 import { authSlice } from './slices/authSlice';
 import { gameSlice } from './slices/gameSlice';
 import { uiSlice } from './slices/uiSlice';
+import { friendsSlice } from './slices/friendsSlice';
+import { roomsSlice } from './slices/roomsSlice';
 
 // Auth persistence config - persist most auth data
 const authPersistConfig: PersistConfig<any> = {
@@ -62,16 +64,49 @@ const uiPersistConfig: PersistConfig<any> = {
   ],
 };
 
+// Friends persistence config - persist friends list but not temporary states
+const friendsPersistConfig: PersistConfig<any> = {
+  key: 'friends',
+  storage: AsyncStorage,
+  whitelist: ['friends'], // Only persist the friends list
+  blacklist: [
+    'friendRequests', // Don't persist requests (should refresh)
+    'isLoading',
+    'error',
+    'searchResults',
+    'isSearching',
+  ],
+};
+
+// Rooms persistence config - persist preferences but not room lists
+const roomsPersistConfig: PersistConfig<any> = {
+  key: 'rooms',
+  storage: AsyncStorage,
+  whitelist: ['matchmakingPreferences'], // Only persist user preferences
+  blacklist: [
+    'publicRooms', // Don't persist room lists (should refresh)
+    'isLoading',
+    'error',
+    'isMatchmaking',
+    'matchmakingResult',
+    'filters',
+  ],
+};
+
 // Create persisted reducers
 const persistedAuthReducer = persistReducer(authPersistConfig, authSlice.reducer);
 const persistedGameReducer = persistReducer(gamePersistConfig, gameSlice.reducer);
 const persistedUIReducer = persistReducer(uiPersistConfig, uiSlice.reducer);
+const persistedFriendsReducer = persistReducer(friendsPersistConfig, friendsSlice.reducer);
+const persistedRoomsReducer = persistReducer(roomsPersistConfig, roomsSlice.reducer);
 
 // Root reducer with persistence
 export const rootReducer = combineReducers({
   auth: persistedAuthReducer,
   game: persistedGameReducer,
   ui: persistedUIReducer,
+  friends: persistedFriendsReducer,
+  rooms: persistedRoomsReducer,
 });
 
 // Persistence configuration for the entire store

@@ -86,3 +86,28 @@ export interface RoleConfiguration {
   count: number;
   description: string;
 }
+
+export interface PublicRoom {
+  id: string;
+  name: string;
+  hostUsername: string;
+  playerCount: number;
+  maxPlayers: number;
+  status: RoomStatus;
+  settings: RoomSettings;
+  createdAt: Date;
+}
+
+export interface MatchmakingPreferences {
+  skillLevel: 'beginner' | 'intermediate' | 'advanced' | 'any';
+  maxPlayers: number;
+  enableVoiceChat: boolean;
+  region: string;
+}
+
+export interface QuickMatchResult {
+  roomId: string;
+  estimatedWaitTime: number;
+  playersFound: number;
+  playersNeeded: number;
+}

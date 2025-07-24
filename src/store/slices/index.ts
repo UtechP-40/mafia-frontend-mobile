@@ -2,6 +2,8 @@
 export * from './authSlice';
 export * from './gameSlice';
 export * from './uiSlice';
+export * from './friendsSlice';
+export * from './roomsSlice';
 
 // Re-export commonly used actions for convenience
 export {
@@ -113,3 +115,51 @@ export {
   selectConnectionQuality,
   selectSettings,
 } from './uiSlice';
+
+// Friends exports
+export {
+  fetchFriends,
+  searchUsers,
+  sendFriendRequest,
+  respondToFriendRequest,
+  removeFriend,
+  clearSearchResults,
+  updateFriendStatus,
+  addFriendRequest,
+  removeFriendRequest,
+  selectFriends,
+  selectFriendsList,
+  selectFriendRequests,
+  selectOnlineFriends,
+  selectFriendsLoading,
+  selectFriendsError,
+  selectSearchResults,
+  selectIsSearching,
+} from './friendsSlice';
+
+// Rooms exports
+export {
+  fetchPublicRooms,
+  startQuickMatch,
+  cancelQuickMatch,
+  createPublicRoom,
+  joinPublicRoom,
+  setFilters,
+  clearFilters,
+  updateMatchmakingPreferences,
+  updateRoomInList,
+  removeRoomFromList,
+  addRoomToList,
+  selectRooms,
+  selectPublicRooms,
+  selectRoomsLoading,
+  selectRoomsError,
+  selectMatchmakingPreferences,
+  selectIsMatchmaking,
+  selectMatchmakingResult,
+  selectRoomFilters,
+} from './roomsSlice';
+
+// Specific error clearing functions
+export { clearError as clearFriendsError } from './friendsSlice';
+export { clearError as clearRoomsError } from './roomsSlice';

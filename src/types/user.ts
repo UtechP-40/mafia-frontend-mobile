@@ -44,3 +44,33 @@ export interface AuthResponse {
   token: string;
   refreshToken: string;
 }
+
+export interface Friend {
+  id: string;
+  username: string;
+  avatar: string;
+  isOnline: boolean;
+  lastSeen: Date;
+  status: 'online' | 'in-game' | 'away' | 'offline';
+  currentActivity?: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  fromUser: Pick<User, 'id' | 'username' | 'avatar'>;
+  status: 'pending' | 'accepted' | 'declined';
+  createdAt: Date;
+}
+
+export interface UserSettings {
+  soundEnabled: boolean;
+  vibrationEnabled: boolean;
+  animationsEnabled: boolean;
+  pushNotifications: boolean;
+  friendRequestNotifications: boolean;
+  gameInviteNotifications: boolean;
+  theme: 'light' | 'dark';
+  language: string;
+}
