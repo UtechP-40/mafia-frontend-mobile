@@ -1,11 +1,13 @@
 import React from 'react';
-import { TextInput, StyleSheet } from 'react-native';
+import { TextInput, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
 
-interface InputProps {
+interface InputProps extends Omit<TextInputProps, 'style'> {
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
   secureTextEntry?: boolean;
+  error?: string;
+  style?: ViewStyle;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -13,28 +15,39 @@ export const Input: React.FC<InputProps> = ({
   onChangeText,
   placeholder,
   secureTextEntry = false,
+  error,
+  style,
+  ...props
 }) => {
   return (
     <TextInput
-      style={styles.input}
+      style={[
+        styles.input,
+        error && styles.inputError,
+        style,
+      ]}
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
       placeholderTextColor="#6b7280"
       secureTextEntry={secureTextEntry}
+      {...props}
     />
   );
 };
 
 const styles = StyleSheet.create({
   input: {
-    backgroundColor: '#2d2d2d',
-    borderRadius: 8,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     fontSize: 16,
     color: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#4b5563',
+    borderWidth: 2,
+    borderColor: '#374151',
+  },
+  inputError: {
+    borderColor: '#ef4444',
   },
 });
