@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiService } from '../../services/api';
 import { User, LoginCredentials, RegisterData, AuthResponse } from '../../types/user';
 
 interface AuthState {
@@ -26,18 +27,7 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async (credentials: LoginCredentials, { rejectWithValue }) => {
     try {
-      // This will be implemented when API service is ready
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Login failed');
-      }
-      
-      const data: AuthResponse = await response.json();
+      const data: AuthResponse = await apiService.login(credentials);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Login failed');
@@ -49,17 +39,7 @@ export const registerUser = createAsyncThunk(
   'auth/register',
   async (userData: RegisterData, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Registration failed');
-      }
-      
-      const data: AuthResponse = await response.json();
+      const data: AuthResponse = await apiService.register(userData);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Registration failed');
@@ -69,25 +49,9 @@ export const registerUser = createAsyncThunk(
 
 export const refreshAuthToken = createAsyncThunk(
   'auth/refresh',
-  async (_, { getState, rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const { auth } = getState() as { auth: AuthState };
-      
-      if (!auth.refreshToken) {
-        throw new Error('No refresh token available');
-      }
-      
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: auth.refreshToken }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.refreshToken();
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Token refresh failed');

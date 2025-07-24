@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiService } from '../../services/api';
 import { 
   Player, 
   GameState as GameStateType, 
@@ -80,17 +81,7 @@ export const createRoom = createAsyncThunk(
   'game/createRoom',
   async (settings: RoomSettings, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create room');
-      }
-      
-      const room: Room = await response.json();
+      const room: Room = await apiService.createRoom(settings);
       return room;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to create room');
@@ -102,16 +93,7 @@ export const joinRoom = createAsyncThunk(
   'game/joinRoom',
   async (roomCode: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/rooms/join/${roomCode}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to join room');
-      }
-      
-      const room: Room = await response.json();
+      const room: Room = await apiService.joinRoom(roomCode);
       return room;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to join room');

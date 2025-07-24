@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiService } from '../../services/api';
 import { Friend, FriendRequest } from '../../types/user';
 
 interface FriendsState {
@@ -24,15 +25,7 @@ export const fetchFriends = createAsyncThunk(
   'friends/fetchFriends',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/friends', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch friends');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.getFriends();
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch friends');
@@ -44,15 +37,7 @@ export const searchUsers = createAsyncThunk(
   'friends/searchUsers',
   async (query: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to search users');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.searchUsers(query);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to search users');
@@ -64,20 +49,7 @@ export const sendFriendRequest = createAsyncThunk(
   'friends/sendFriendRequest',
   async (userId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/friends/request', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({ userId }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to send friend request');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.sendFriendRequest(userId);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to send friend request');
@@ -89,20 +61,7 @@ export const respondToFriendRequest = createAsyncThunk(
   'friends/respondToFriendRequest',
   async ({ requestId, accept }: { requestId: string; accept: boolean }, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/friends/request/${requestId}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({ accept }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to respond to friend request');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.respondToFriendRequest(requestId, accept);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to respond to friend request');
@@ -114,15 +73,7 @@ export const removeFriend = createAsyncThunk(
   'friends/removeFriend',
   async (friendId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/friends/${friendId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to remove friend');
-      }
-      
+      await apiService.removeFriend(friendId);
       return friendId;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to remove friend');

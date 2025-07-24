@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiService } from '../../services/api';
 import { PublicRoom, MatchmakingPreferences, QuickMatchResult } from '../../types/game';
 
 interface RoomsState {
@@ -39,20 +40,7 @@ export const fetchPublicRooms = createAsyncThunk(
   'rooms/fetchPublicRooms',
   async (filters: Partial<RoomsState['filters']> | undefined, { rejectWithValue }) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (filters?.maxPlayers) queryParams.append('maxPlayers', filters.maxPlayers.toString());
-      if (filters?.hasVoiceChat !== null && filters?.hasVoiceChat !== undefined) queryParams.append('hasVoiceChat', filters.hasVoiceChat.toString());
-      if (filters?.skillLevel) queryParams.append('skillLevel', filters.skillLevel);
-      
-      const response = await fetch(`/api/rooms/public?${queryParams.toString()}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch public rooms');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.getPublicRooms(filters);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch public rooms');
@@ -64,20 +52,7 @@ export const startQuickMatch = createAsyncThunk(
   'rooms/startQuickMatch',
   async (preferences: MatchmakingPreferences, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/matchmaking/quick', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify(preferences),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to start quick match');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.startQuickMatch(preferences);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to start quick match');
@@ -89,15 +64,7 @@ export const cancelQuickMatch = createAsyncThunk(
   'rooms/cancelQuickMatch',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/matchmaking/cancel', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to cancel quick match');
-      }
-      
+      await apiService.cancelQuickMatch();
       return true;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to cancel quick match');
@@ -109,23 +76,10 @@ export const createPublicRoom = createAsyncThunk(
   'rooms/createPublicRoom',
   async (roomData: { name: string; maxPlayers: number; enableVoiceChat: boolean }, { rejectWithValue }) => {
     try {
-      const response = await fetch('/api/rooms', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
-        },
-        body: JSON.stringify({
-          ...roomData,
-          isPublic: true,
-        }),
+      const data = await apiService.createRoom({
+        ...roomData,
+        isPublic: true,
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to create room');
-      }
-      
-      const data = await response.json();
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to create room');
@@ -137,16 +91,7 @@ export const joinPublicRoom = createAsyncThunk(
   'rooms/joinPublicRoom',
   async (roomId: string, { rejectWithValue }) => {
     try {
-      const response = await fetch(`/api/rooms/${roomId}/join`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to join room');
-      }
-      
-      const data = await response.json();
+      const data = await apiService.joinRoom(roomId);
       return data;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to join room');

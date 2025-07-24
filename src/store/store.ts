@@ -45,9 +45,7 @@ export const store = configureStore({
 });
 
 // Create persistor
-export const persistor = persistStore(store, {
-  manualPersist: false,
-}, (error) => {
+export const persistor = persistStore(store, undefined, (error?: any) => {
   if (error) {
     onPersistError(error);
   }
@@ -71,14 +69,6 @@ export const resetStore = () => {
 
 // Development helpers
 if (__DEV__) {
-  // Enable hot reloading for reducers
-  if (module.hot) {
-    module.hot.accept('./persistence', () => {
-      const newRootReducer = require('./persistence').rootReducer;
-      store.replaceReducer(newRootReducer);
-    });
-  }
-  
   // Add store to global scope for debugging
   (global as any).store = store;
   (global as any).persistor = persistor;
