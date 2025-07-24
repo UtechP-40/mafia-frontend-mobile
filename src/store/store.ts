@@ -1,21 +1,85 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { authSlice } from './slices/authSlice';
-import { gameSlice } from './slices/gameSlice';
-import { uiSlice } from './slices/uiSlice';
+import { persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
+import { rootReducer, onPersistError } from './persistence';
+import { socketMiddleware } from './middleware/socketMiddleware';
 
+// Configure the store with persistence and middleware
 export const store = configureStore({
-  reducer: {
-    auth: authSlice.reducer,
-    game: gameSlice.reducer,
-    ui: uiSlice.reducer,
-  },
+  reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredActions: ['persist/PERSIST'],
+        ignoredActions: [
+          FLUSH,
+          REHYDRATE,
+          PAUSE,
+          PERSIST,
+          PURGE,
+          REGISTER,
+          // Ignore socket-related actions that may contain non-serializable data
+          'game/setGameState',
+          'game/addGameEvent',
+          'game/addChatMessage',
+        ],
+        ignoredPaths: [
+          // Ignore paths that may contain non-serializable data
+          'game.gameState.createdAt',
+          'game.gameState.updatedAt',
+          'game.gameEvents',
+          'game.chatMessages',
+          'auth.user.createdAt',
+          'auth.user.lastActive',
+        ],
       },
-    }),
+      thunk: {
+        extraArgument: {
+          // Add any extra arguments for thunks here
+        },
+      },
+    }).concat(socketMiddleware),
+  devTools: __DEV__ && {
+    name: 'Mobile Mafia Game',
+    trace: true,
+    traceLimit: 25,
+  },
 });
 
+// Create persistor
+export const persistor = persistStore(store, {
+  manualPersist: false,
+}, (error) => {
+  if (error) {
+    onPersistError(error);
+  }
+});
+
+// Types
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
+
+// Store utilities
+export const getStoreState = () => store.getState();
+
+// Helper function to dispatch actions
+export const dispatchAction = (action: any) => store.dispatch(action);
+
+// Helper function to reset the entire store
+export const resetStore = () => {
+  persistor.purge();
+  // Optionally reload the app or reset to initial state
+};
+
+// Development helpers
+if (__DEV__) {
+  // Enable hot reloading for reducers
+  if (module.hot) {
+    module.hot.accept('./persistence', () => {
+      const newRootReducer = require('./persistence').rootReducer;
+      store.replaceReducer(newRootReducer);
+    });
+  }
+  
+  // Add store to global scope for debugging
+  (global as any).store = store;
+  (global as any).persistor = persistor;
+}
