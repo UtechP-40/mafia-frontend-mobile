@@ -2,8 +2,44 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API Configuration
 const API_BASE_URL = __DEV__ 
-  ? 'http://localhost:3000/api'  // Use localhost for development
-  : 'http://localhost:3000/api';
+  ? 'https://m6b83ch2-3000.inc1.devtunnels.ms/api'  // Use localhost for development
+  : 'https://m6b83ch2-3000.inc1.devtunnels.ms/api';
+
+// Define API response types
+interface ApiResponse<T = any> {
+  success: boolean;
+  message?: string;
+  data?: T;
+}
+
+interface AuthResponse {
+  player: any;
+  accessToken: string;
+  refreshToken: string;
+}
+
+interface PaginatedResponse<T> {
+  rooms?: T[];
+  data?: T[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+interface User {
+  id: string;
+  username: string;
+  email?: string;
+  avatar: string;
+  statistics?: {
+    gamesPlayed: number;
+    gamesWon: number;
+    winRate: number;
+    favoriteRole: string;
+    averageGameDuration: number;
+    eloRating: number;
+  };
+}
 
 // API Service class
 class ApiService {
@@ -24,7 +60,7 @@ class ApiService {
   private async request<T>(
     endpoint: string, 
     options: RequestInit = {}
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = await this.getAuthHeaders();
 
@@ -35,13 +71,13 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
+      const data = await response.json();
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+        throw new Error(data.message || `HTTP ${response.status}: ${response.statusText}`);
       }
 
-      return await response.json();
+      return data as ApiResponse<T>;
     } catch (error) {
       console.error(`API request failed: ${endpoint}`, error);
       throw error;
@@ -49,12 +85,12 @@ class ApiService {
   }
 
   // GET request
-  async get<T>(endpoint: string): Promise<T> {
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'GET' });
   }
 
   // POST request
-  async post<T>(endpoint: string, data?: any): Promise<T> {
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
@@ -62,7 +98,7 @@ class ApiService {
   }
 
   // PUT request
-  async put<T>(endpoint: string, data?: any): Promise<T> {
+  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
@@ -70,7 +106,7 @@ class ApiService {
   }
 
   // DELETE request
-  async delete<T>(endpoint: string): Promise<T> {
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, { method: 'DELETE' });
   }
 
@@ -149,7 +185,11 @@ class ApiService {
     const refreshToken = await AsyncStorage.getItem('refreshToken');
     if (refreshToken) {
       try {
-        await this.delete('/auth/logout');
+        // Backend expects DELETE request with refreshToken in body
+        await this.request('/auth/logout', {
+          method: 'DELETE',
+          body: JSON.stringify({ refreshToken })
+        });
       } catch (error) {
         console.error('Logout API call failed:', error);
       }
@@ -160,7 +200,7 @@ class ApiService {
     await AsyncStorage.removeItem('refreshToken');
   }
 
-  async validateToken(token: string) {
+  async validateToken(_token: string) {
     try {
       const response = await this.post('/auth/verify-token', {});
       return response.success;
@@ -169,17 +209,17 @@ class ApiService {
     }
   }
 
-  async socialLogin(socialData: { provider: string; token: string; userInfo?: any }) {
+  async socialLogin(_socialData: { provider: string; token: string; userInfo?: any }) {
     // TODO: Implement social login when backend supports it
     throw new Error('Social login not implemented yet');
   }
 
-  async requestPasswordReset(email: string) {
+  async requestPasswordReset(_email: string) {
     // TODO: Implement password reset when backend supports it
     throw new Error('Password reset not implemented yet');
   }
 
-  async resetPassword(token: string, newPassword: string) {
+  async resetPassword(_token: string, _newPassword: string) {
     // TODO: Implement password reset when backend supports it
     throw new Error('Password reset not implemented yet');
   }
@@ -187,35 +227,38 @@ class ApiService {
   // Friends API
   async getFriends() {
     try {
-      return this.get('/friends');
+      const response = await this.get('/players/friends');
+      return { friends: response.data || [], friendRequests: [] };
     } catch (error) {
       // Return empty data if friends API is not implemented yet
-      console.log('Friends API not implemented yet');
+      console.log('Friends API error:', error);
       return { friends: [], friendRequests: [] };
     }
   }
 
   async searchUsers(query: string) {
     try {
-      return this.get(`/users/search?q=${encodeURIComponent(query)}`);
+      const response = await this.get(`/players/search?q=${encodeURIComponent(query)}`);
+      return response.data || [];
     } catch (error) {
-      console.log('User search API not implemented yet');
+      console.log('User search API error:', error);
       return [];
     }
   }
 
   async sendFriendRequest(userId: string) {
     try {
-      return this.post('/friends/request', { userId });
+      return this.post('/players/friends', { friendId: userId });
     } catch (error) {
-      console.log('Send friend request API not implemented yet');
+      console.log('Send friend request API error:', error);
       throw error;
     }
   }
 
   async respondToFriendRequest(requestId: string, accept: boolean) {
     try {
-      return this.put(`/friends/request/${requestId}`, { accept });
+      // TODO: Implement when backend supports friend requests
+      return this.put(`/players/friends/request/${requestId}`, { accept });
     } catch (error) {
       console.log('Respond to friend request API not implemented yet');
       throw error;
@@ -224,9 +267,9 @@ class ApiService {
 
   async removeFriend(friendId: string) {
     try {
-      return this.delete(`/friends/${friendId}`);
+      return this.delete(`/players/friends/${friendId}`);
     } catch (error) {
-      console.log('Remove friend API not implemented yet');
+      console.log('Remove friend API error:', error);
       throw error;
     }
   }
@@ -242,36 +285,53 @@ class ApiService {
       if (filters?.skillLevel) queryParams.append('skillLevel', filters.skillLevel);
       
       const query = queryParams.toString();
-      return this.get(`/rooms/public${query ? `?${query}` : ''}`);
+      const response = await this.get<PaginatedResponse<any>>(`/rooms/public${query ? `?${query}` : ''}`);
+      
+      // Handle paginated response format
+      if (response.success && response.data) {
+        return response.data.rooms || response.data.data || [];
+      }
+      return [];
     } catch (error) {
-      console.log('Public rooms API not fully implemented yet');
+      console.log('Public rooms API error:', error);
       return [];
     }
   }
 
   async createRoom(roomData: any) {
-    return this.post('/rooms', roomData);
+    const response = await this.post('/rooms', { settings: roomData });
+    return response.data;
   }
 
   async joinRoom(roomId: string) {
-    return this.post(`/rooms/${roomId}/join`);
+    const response = await this.post('/rooms/join', { roomIdentifier: roomId });
+    return response.data;
   }
 
   // Matchmaking API
   async startQuickMatch(preferences: any) {
     try {
-      return this.post('/matchmaking/quick', preferences);
+      // The backend expects connectionInfo, so we'll provide default values
+      const requestData = {
+        preferences,
+        connectionInfo: {
+          region: preferences.region || 'auto',
+          connectionQuality: 'good',
+          latency: 50
+        }
+      };
+      return this.post('/matchmaking/quick-match', requestData);
     } catch (error) {
-      console.log('Quick match API not implemented yet');
+      console.log('Quick match API error:', error);
       throw new Error('Quick match feature is not available yet');
     }
   }
 
   async cancelQuickMatch() {
     try {
-      return this.post('/matchmaking/cancel');
+      return this.post('/matchmaking/leave');
     } catch (error) {
-      console.log('Cancel quick match API not implemented yet');
+      console.log('Cancel quick match API error:', error);
       throw error;
     }
   }
@@ -281,7 +341,7 @@ class ApiService {
 export const apiService = new ApiService(API_BASE_URL);
 
 // Export types for better TypeScript support
-export type ApiResponse<T> = T;
+export type { ApiResponse };
 export type ApiError = {
   message: string;
   code?: string;

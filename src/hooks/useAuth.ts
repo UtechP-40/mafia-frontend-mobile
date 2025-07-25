@@ -4,6 +4,7 @@ import { authSlice, loginUser, registerUser } from '../store/slices/authSlice';
 import { LoginCredentials, RegisterData } from '../types/user';
 import { authService } from '../services/auth';
 import { storageService } from '../services/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const useAuth = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -18,7 +19,7 @@ export const useAuth = () => {
         username: credentials.username,
         password: credentials.password,
       });
-      
+      // await AsyncStorage.setItem('token',result?.token)
       return result;
     } catch (error) {
       throw error;
