@@ -56,5 +56,63 @@ jest.mock('socket.io-client', () => ({
   })),
 }));
 
+// Mock Expo modules
+jest.mock('expo-local-authentication', () => ({
+  hasHardwareAsync: jest.fn(() => Promise.resolve(true)),
+  isEnrolledAsync: jest.fn(() => Promise.resolve(true)),
+  authenticateAsync: jest.fn(() => Promise.resolve({ success: true })),
+  AuthenticationType: {
+    FINGERPRINT: 1,
+    FACIAL_RECOGNITION: 2,
+  },
+}));
+
+jest.mock('expo-auth-session', () => ({
+  useAuthRequest: jest.fn(() => [null, null, jest.fn()]),
+  makeRedirectUri: jest.fn(() => 'test://redirect'),
+  ResponseType: { Token: 'token', IdToken: 'id_token' },
+  AppleAuthenticationScope: { FULL_NAME: 'name', EMAIL: 'email' },
+}));
+
+jest.mock('expo-web-browser', () => ({
+  maybeCompleteAuthSession: jest.fn(),
+}));
+
+jest.mock('expo-crypto', () => ({
+  digestStringAsync: jest.fn(),
+}));
+
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
+
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: require('react-native').View,
+  SafeAreaProvider: ({ children }: any) => children,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock('react-native-keychain', () => ({
+  setInternetCredentials: jest.fn(() => Promise.resolve()),
+  getInternetCredentials: jest.fn(() => Promise.resolve({ username: '', password: '' })),
+  resetInternetCredentials: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock fetch for async thunks
+global.fetch = jest.fn();
+
+// Mock console methods to reduce noise in tests
+global.console = {
+  ...console,
+  log: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+};
+
 // Silence the warning: Animated: `useNativeDriver` is not supported
-jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper');
+// Note: NativeAnimatedHelper mock removed due to path issues in newer RN versions
+
+// Setup global test environment
+beforeEach(() => {
+  jest.clearAllMocks();
+});

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, fireEvent } from '@testing-library/react-native';
 import { PlayerCard } from '../PlayerCard';
 
 describe('PlayerCard', () => {
@@ -311,6 +311,209 @@ describe('PlayerCard', () => {
     });
   });
 
+  describe('Role Display', () => {
+    it('shows role badge when showRole is enabled', () => {
+      const mafiaPlayer = { ...mockPlayer, role: 'mafia' as const };
+      const { getByText } = render(
+        <PlayerCard player={mafiaPlayer} showRole={true} />
+      );
+      
+      expect(getByText('MAFIA')).toBeTruthy();
+    });
+
+    it('does not show role badge when showRole is disabled', () => {
+      const mafiaPlayer = { ...mockPlayer, role: 'mafia' as const };
+      const { queryByText } = render(
+        <PlayerCard player={mafiaPlayer} showRole={false} />
+      );
+      
+      expect(queryByText('MAFIA')).toBeNull();
+    });
+
+    it('applies correct role colors to avatar', () => {
+      const roles = [
+        { role: 'mafia' as const, color: '#ef4444' },
+        { role: 'detective' as const, color: '#3b82f6' },
+        { role: 'doctor' as const, color: '#10b981' },
+        { role: 'mayor' as const, color: '#f59e0b' },
+        { role: 'villager' as const, color: '#6366f1' },
+      ];
+
+      roles.forEach(({ role, color }) => {
+        const rolePlayer = { ...mockPlayer, role };
+        const { getByText } = render(
+          <PlayerCard player={rolePlayer} showRole={true} />
+        );
+        
+        const avatar = getByText('T').parent;
+        expect(avatar?.props.style).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ backgroundColor: color })
+          ])
+        );
+      });
+    });
+
+    it('displays correct role names', () => {
+      const roles = [
+        { role: 'mafia' as const, display: 'MAFIA' },
+        { role: 'detective' as const, display: 'DETECTIVE' },
+        { role: 'doctor' as const, display: 'DOCTOR' },
+        { role: 'mayor' as const, display: 'MAYOR' },
+        { role: 'villager' as const, display: 'VILLAGER' },
+      ];
+
+      roles.forEach(({ role, display }) => {
+        const rolePlayer = { ...mockPlayer, role };
+        const { getByText } = render(
+          <PlayerCard player={rolePlayer} showRole={true} />
+        );
+        
+        expect(getByText(display)).toBeTruthy();
+      });
+    });
+  });
+
+  describe('Voting State', () => {
+    it('applies voting styling when isVoting is true', () => {
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} isVoting={true} />
+      );
+      
+      const card = getByText('TestPlayer').parent?.parent?.parent;
+      expect(card?.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ borderColor: '#f59e0b' })
+        ])
+      );
+    });
+
+    it('shows voting indicator when isVoting is true', () => {
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} isVoting={true} />
+      );
+      
+      expect(getByText('VOTE')).toBeTruthy();
+    });
+
+    it('does not show voting indicator when isVoting is false', () => {
+      const { queryByText } = render(
+        <PlayerCard player={mockPlayer} isVoting={false} />
+      );
+      
+      expect(queryByText('VOTE')).toBeNull();
+    });
+  });
+
+  describe('Selection State', () => {
+    it('applies selected styling when isSelected is true', () => {
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} isSelected={true} />
+      );
+      
+      const card = getByText('TestPlayer').parent?.parent?.parent;
+      expect(card?.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ borderColor: '#6366f1' })
+        ])
+      );
+    });
+
+    it('shows selection indicator when isSelected is true', () => {
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} isSelected={true} />
+      );
+      
+      expect(getByText('✓')).toBeTruthy();
+    });
+
+    it('does not show selection indicator when isSelected is false', () => {
+      const { queryByText } = render(
+        <PlayerCard player={mockPlayer} isSelected={false} />
+      );
+      
+      expect(queryByText('✓')).toBeNull();
+    });
+  });
+
+  describe('Touch Interaction', () => {
+    it('calls onSelect when card is pressed', () => {
+      const mockOnSelect = jest.fn();
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} onSelect={mockOnSelect} />
+      );
+      
+      fireEvent.press(getByText('TestPlayer').parent?.parent?.parent);
+      expect(mockOnSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not call onSelect when player is eliminated', () => {
+      const mockOnSelect = jest.fn();
+      const deadPlayer = { ...mockPlayer, isAlive: false };
+      const { getByText } = render(
+        <PlayerCard player={deadPlayer} onSelect={mockOnSelect} />
+      );
+      
+      fireEvent.press(getByText('TestPlayer').parent?.parent?.parent);
+      expect(mockOnSelect).not.toHaveBeenCalled();
+    });
+
+    it('renders as TouchableOpacity when onSelect is provided', () => {
+      const mockOnSelect = jest.fn();
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} onSelect={mockOnSelect} />
+      );
+      
+      const card = getByText('TestPlayer').parent?.parent?.parent;
+      expect(card?.type).toBe('TouchableOpacity');
+    });
+
+    it('renders as View when onSelect is not provided', () => {
+      const { getByText } = render(
+        <PlayerCard player={mockPlayer} />
+      );
+      
+      const card = getByText('TestPlayer').parent?.parent?.parent;
+      expect(card?.type).toBe('View');
+    });
+  });
+
+  describe('Elimination Overlay', () => {
+    it('shows elimination overlay for dead players', () => {
+      const deadPlayer = { ...mockPlayer, isAlive: false };
+      const { getByText } = render(
+        <PlayerCard player={deadPlayer} />
+      );
+      
+      expect(getByText('ELIMINATED')).toBeTruthy();
+    });
+
+    it('does not show elimination overlay for alive players', () => {
+      const { queryByText } = render(
+        <PlayerCard player={mockPlayer} />
+      );
+      
+      expect(queryByText('ELIMINATED')).toBeNull();
+    });
+
+    it('applies correct styling to elimination overlay', () => {
+      const deadPlayer = { ...mockPlayer, isAlive: false };
+      const { getByText } = render(
+        <PlayerCard player={deadPlayer} />
+      );
+      
+      const overlay = getByText('ELIMINATED').parent;
+      expect(overlay?.props.style).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ 
+            position: 'absolute',
+            backgroundColor: 'rgba(0, 0, 0, 0.7)'
+          })
+        ])
+      );
+    });
+  });
+
   describe('Edge Cases', () => {
     it('handles undefined isReady property', () => {
       const playerWithoutReady = {
@@ -348,13 +551,41 @@ describe('PlayerCard', () => {
       
       expect(getByText('HOST')).toBeTruthy();
       expect(getByText('TestPlayer')).toBeTruthy();
-      
-      const card = getByText('TestPlayer').parent?.parent?.parent;
-      expect(card?.props.style).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ opacity: 0.5 })
-        ])
+      expect(getByText('ELIMINATED')).toBeTruthy();
+    });
+
+    it('handles unknown role gracefully', () => {
+      const unknownRolePlayer = { ...mockPlayer, role: undefined };
+      const { getByText } = render(
+        <PlayerCard player={unknownRolePlayer} showRole={true} />
       );
+      
+      // Should not crash and should render normally
+      expect(getByText('TestPlayer')).toBeTruthy();
+    });
+
+    it('handles multiple states simultaneously', () => {
+      const complexPlayer = { 
+        ...mockPlayer, 
+        role: 'mafia' as const,
+        isHost: true,
+        isReady: true,
+        isAlive: false
+      };
+      const { getByText } = render(
+        <PlayerCard 
+          player={complexPlayer} 
+          showRole={true}
+          showReadyState={true}
+          isSelected={true}
+          isVoting={true}
+        />
+      );
+      
+      expect(getByText('TestPlayer')).toBeTruthy();
+      expect(getByText('HOST')).toBeTruthy();
+      expect(getByText('MAFIA')).toBeTruthy();
+      expect(getByText('ELIMINATED')).toBeTruthy();
     });
   });
 });

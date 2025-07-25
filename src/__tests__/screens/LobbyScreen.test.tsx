@@ -7,6 +7,7 @@ import { gameSlice } from '../../store/slices/gameSlice';
 import { authSlice } from '../../store/slices/authSlice';
 import { uiSlice } from '../../store/slices/uiSlice';
 import { socketService } from '../../services/socket';
+import { Alert } from 'react-native';
 
 // Mock socket service
 jest.mock('../../services/socket', () => ({
@@ -17,17 +18,6 @@ jest.mock('../../services/socket', () => ({
     isConnected: jest.fn(() => true),
   },
 }));
-
-// Mock Alert
-jest.mock('react-native', () => {
-  const RN = jest.requireActual('react-native');
-  return {
-    ...RN,
-    Alert: {
-      alert: jest.fn(),
-    },
-  };
-});
 
 const mockSocketService = socketService as jest.Mocked<typeof socketService>;
 

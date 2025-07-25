@@ -25,36 +25,58 @@ jest.mock('socket.io-client', () => ({
 }));
 
 // Mock React Native components
-jest.mock('react-native', () => ({
-  View: 'View',
-  Text: 'Text',
-  TextInput: 'TextInput',
-  TouchableOpacity: 'TouchableOpacity',
-  ScrollView: 'ScrollView',
-  KeyboardAvoidingView: 'KeyboardAvoidingView',
-  Dimensions: {
-    get: () => ({ width: 375, height: 667 }),
-  },
-  Platform: {
-    OS: 'ios',
-    select: (obj: any) => obj.ios,
-  },
-  StyleSheet: {
-    create: (styles: any) => styles,
-  },
-  Alert: {
-    alert: jest.fn(),
-  },
-  Animated: {
-    Value: jest.fn(() => ({
-      interpolate: jest.fn(() => '0%'),
-    })),
-    timing: jest.fn(() => ({
-      start: jest.fn(),
-    })),
-    View: 'Animated.View',
-  },
-}));
+jest.mock('react-native', () => {
+  const RN = jest.requireActual('react-native');
+  
+  // Mock only the problematic parts, keep the rest
+  return Object.setPrototypeOf(
+    {
+      ...RN,
+      Dimensions: {
+        get: () => ({ width: 375, height: 667 }),
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      },
+      Platform: {
+        OS: 'ios',
+        select: (obj: any) => obj.ios || obj.default,
+        Version: 14,
+      },
+      StyleSheet: {
+        ...RN.StyleSheet,
+        create: (styles: any) => styles,
+        flatten: (style: any) => style,
+      },
+      Alert: {
+        alert: jest.fn(),
+      },
+      Animated: {
+        ...RN.Animated,
+        Value: jest.fn(() => ({
+          interpolate: jest.fn(() => 0),
+          setValue: jest.fn(),
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+          removeAllListeners: jest.fn(),
+          stopAnimation: jest.fn(),
+          resetAnimation: jest.fn(),
+        })),
+        timing: jest.fn(() => ({
+          start: jest.fn(),
+          stop: jest.fn(),
+          reset: jest.fn(),
+        })),
+        spring: jest.fn(() => ({
+          start: jest.fn(),
+          stop: jest.fn(),
+          reset: jest.fn(),
+        })),
+        View: RN.View,
+      },
+    },
+    RN
+  );
+});
 
 // Mock Expo modules
 jest.mock('expo-local-authentication', () => ({
