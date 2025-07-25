@@ -170,6 +170,13 @@ export const gameSlice = createSlice({
       state.players = action.payload;
     },
     
+    updatePlayerReady: (state, action: PayloadAction<{ playerId: string; isReady: boolean }>) => {
+      const player = state.players.find(p => p.id === action.payload.playerId);
+      if (player) {
+        (player as any).isReady = action.payload.isReady;
+      }
+    },
+    
     addPlayer: (state, action: PayloadAction<Player>) => {
       const existingIndex = state.players.findIndex(p => p.id === action.payload.id);
       if (existingIndex >= 0) {
@@ -355,6 +362,7 @@ export const {
   updateTimeRemaining,
   incrementDay,
   updatePlayers,
+  updatePlayerReady,
   addPlayer,
   removePlayer,
   eliminatePlayer,

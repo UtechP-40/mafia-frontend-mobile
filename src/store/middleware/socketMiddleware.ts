@@ -13,6 +13,7 @@ import {
   updateVotes,
   eliminatePlayer,
   setCurrentRoom,
+  updatePlayerReady,
 } from "../slices/gameSlice";
 import { addNotification } from "../slices/uiSlice";
 
@@ -174,6 +175,18 @@ function connectSocket(store: any, token: string) {
 
   socketService.on("room-updated", (data) => {
     store.dispatch(setCurrentRoom(data.room));
+  });
+
+  // Lobby-specific events
+  socketService.on("player-ready-changed", (data) => {
+    store.dispatch(updatePlayerReady({ 
+      playerId: data.playerId, 
+      isReady: data.isReady 
+    }));
+  });
+
+  socketService.on("lobby-chat-message", (data) => {
+    store.dispatch(addChatMessage(data.message));
   });
 
   // Game events
