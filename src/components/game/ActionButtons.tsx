@@ -1,15 +1,13 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { GamePhase, GameRole } from '../../types/game';
+import { GamePhase, GameRole, Player } from '../../types/game';
 import { Button } from '../ui/Button';
 
 interface ActionButtonsProps {
-  phase: GamePhase;
-  playerRole?: GameRole;
-  isAlive: boolean;
+  currentPhase: GamePhase;
+  currentPlayer: Player;
+  onChatToggle: () => void;
   isHost: boolean;
-  canPerformAction: boolean;
-  hasPerformedAction: boolean;
   onStartGame?: () => void;
   onUseAbility?: () => void;
   onEndPhase?: () => void;
@@ -19,12 +17,10 @@ interface ActionButtonsProps {
 }
 
 export const ActionButtons: React.FC<ActionButtonsProps> = ({
-  phase,
-  playerRole,
-  isAlive,
+  currentPhase,
+  currentPlayer,
+  onChatToggle,
   isHost,
-  canPerformAction,
-  hasPerformedAction,
   onStartGame,
   onUseAbility,
   onEndPhase,
@@ -32,6 +28,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   onViewResults,
   disabled = false,
 }) => {
+  const { role: playerRole, isAlive } = currentPlayer;
   const renderLobbyActions = () => (
     <View style={styles.buttonContainer}>
       {isHost && (
@@ -54,7 +51,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
   const renderDayActions = () => (
     <View style={styles.buttonContainer}>
-      {/* Day phase typically doesn't have special actions, just discussion */}
+      <Button
+        title="💬 Chat"
+        onPress={onChatToggle}
+        disabled={disabled}
+        style={styles.chatButton}
+      />
       <Button
         title="Leave Game"
         onPress={onLeaveGame}
@@ -70,6 +72,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       return (
         <View style={styles.buttonContainer}>
           <Button
+            title="💬 Chat"
+            onPress={onChatToggle}
+            disabled={disabled}
+            style={styles.chatButton}
+          />
+          <Button
             title="Leave Game"
             onPress={onLeaveGame}
             variant="outline"
@@ -83,11 +91,11 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
     const getAbilityButtonText = () => {
       switch (playerRole) {
         case 'mafia':
-          return hasPerformedAction ? 'Target Selected' : 'Choose Target';
+          return 'Choose Target';
         case 'detective':
-          return hasPerformedAction ? 'Investigation Complete' : 'Investigate Player';
+          return 'Investigate Player';
         case 'doctor':
-          return hasPerformedAction ? 'Protection Set' : 'Protect Player';
+          return 'Protect Player';
         default:
           return 'No Action Available';
       }
@@ -95,9 +103,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
     const canUseAbility = () => {
       return playerRole && 
-             ['mafia', 'detective', 'doctor'].includes(playerRole) && 
-             canPerformAction && 
-             !hasPerformedAction;
+             ['mafia', 'detective', 'doctor'].includes(playerRole);
     };
 
     return (
@@ -106,13 +112,17 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
           <Button
             title={getAbilityButtonText()}
             onPress={onUseAbility}
-            disabled={disabled || hasPerformedAction || !canPerformAction}
-            style={[
-              styles.primaryButton,
-              hasPerformedAction && styles.completedButton
-            ]}
+            disabled={disabled}
+            style={styles.primaryButton}
           />
         )}
+        
+        <Button
+          title="💬 Chat"
+          onPress={onChatToggle}
+          disabled={disabled}
+          style={styles.chatButton}
+        />
         
         <Button
           title="Leave Game"
@@ -130,6 +140,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       return (
         <View style={styles.buttonContainer}>
           <Button
+            title="💬 Chat"
+            onPress={onChatToggle}
+            disabled={disabled}
+            style={styles.chatButton}
+          />
+          <Button
             title="Leave Game"
             onPress={onLeaveGame}
             variant="outline"
@@ -142,7 +158,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
 
     return (
       <View style={styles.buttonContainer}>
-        {/* Voting is handled by VotingInterface component */}
+        <Button
+          title="💬 Chat"
+          onPress={onChatToggle}
+          disabled={disabled}
+          style={styles.chatButton}
+        />
         <Button
           title="Leave Game"
           onPress={onLeaveGame}
@@ -183,7 +204,7 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
   );
 
   const renderPhaseActions = () => {
-    switch (phase) {
+    switch (currentPhase) {
       case 'lobby':
         return renderLobbyActions();
       case 'day':
@@ -197,6 +218,12 @@ export const ActionButtons: React.FC<ActionButtonsProps> = ({
       default:
         return (
           <View style={styles.buttonContainer}>
+            <Button
+              title="💬 Chat"
+              onPress={onChatToggle}
+              disabled={disabled}
+              style={styles.chatButton}
+            />
             <Button
               title="Leave Game"
               onPress={onLeaveGame}
@@ -231,5 +258,8 @@ const styles = StyleSheet.create({
   },
   completedButton: {
     backgroundColor: '#10b981',
+  },
+  chatButton: {
+    backgroundColor: '#f59e0b',
   },
 });
