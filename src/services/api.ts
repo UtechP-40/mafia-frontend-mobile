@@ -2,8 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API Configuration
 const API_BASE_URL = __DEV__ 
-  ? 'https://m6b83ch2-3000.inc1.devtunnels.ms/api' 
-  : 'https://m6b83ch2-3000.inc1.devtunnels.ms/api';
+  ? 'http://localhost:3000/api'  // Use localhost for development
+  : 'http://localhost:3000/api';
 
 // API Service class
 class ApiService {
@@ -86,6 +86,10 @@ class ApiService {
     
     // Transform backend response to match frontend expectations
     if (response.success && response.data) {
+      // Store tokens in AsyncStorage
+      await AsyncStorage.setItem('token', response.data.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      
       return {
         user: response.data.player,
         token: response.data.accessToken,
@@ -103,6 +107,10 @@ class ApiService {
     
     // Transform backend response to match frontend expectations
     if (response.success && response.data) {
+      // Store tokens in AsyncStorage
+      await AsyncStorage.setItem('token', response.data.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      
       return {
         user: response.data.player,
         token: response.data.accessToken,
@@ -115,10 +123,18 @@ class ApiService {
 
   async refreshToken() {
     const refreshToken = await AsyncStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+    
     const response = await this.post('/auth/refresh', { refreshToken });
     
     // Transform backend response to match frontend expectations
     if (response.success && response.data) {
+      // Update tokens in AsyncStorage
+      await AsyncStorage.setItem('token', response.data.accessToken);
+      await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+      
       return {
         user: response.data.player,
         token: response.data.accessToken,
@@ -129,38 +145,108 @@ class ApiService {
     throw new Error(response.message || 'Token refresh failed');
   }
 
+  async logout() {
+    const refreshToken = await AsyncStorage.getItem('refreshToken');
+    if (refreshToken) {
+      try {
+        await this.delete('/auth/logout');
+      } catch (error) {
+        console.error('Logout API call failed:', error);
+      }
+    }
+    
+    // Clear tokens from AsyncStorage
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('refreshToken');
+  }
+
+  async validateToken(token: string) {
+    try {
+      const response = await this.post('/auth/verify-token', {});
+      return response.success;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  async socialLogin(socialData: { provider: string; token: string; userInfo?: any }) {
+    // TODO: Implement social login when backend supports it
+    throw new Error('Social login not implemented yet');
+  }
+
+  async requestPasswordReset(email: string) {
+    // TODO: Implement password reset when backend supports it
+    throw new Error('Password reset not implemented yet');
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    // TODO: Implement password reset when backend supports it
+    throw new Error('Password reset not implemented yet');
+  }
+
   // Friends API
   async getFriends() {
-    return this.get('/friends');
+    try {
+      return this.get('/friends');
+    } catch (error) {
+      // Return empty data if friends API is not implemented yet
+      console.log('Friends API not implemented yet');
+      return { friends: [], friendRequests: [] };
+    }
   }
 
   async searchUsers(query: string) {
-    return this.get(`/users/search?q=${encodeURIComponent(query)}`);
+    try {
+      return this.get(`/users/search?q=${encodeURIComponent(query)}`);
+    } catch (error) {
+      console.log('User search API not implemented yet');
+      return [];
+    }
   }
 
   async sendFriendRequest(userId: string) {
-    return this.post('/friends/request', { userId });
+    try {
+      return this.post('/friends/request', { userId });
+    } catch (error) {
+      console.log('Send friend request API not implemented yet');
+      throw error;
+    }
   }
 
   async respondToFriendRequest(requestId: string, accept: boolean) {
-    return this.put(`/friends/request/${requestId}`, { accept });
+    try {
+      return this.put(`/friends/request/${requestId}`, { accept });
+    } catch (error) {
+      console.log('Respond to friend request API not implemented yet');
+      throw error;
+    }
   }
 
   async removeFriend(friendId: string) {
-    return this.delete(`/friends/${friendId}`);
+    try {
+      return this.delete(`/friends/${friendId}`);
+    } catch (error) {
+      console.log('Remove friend API not implemented yet');
+      throw error;
+    }
   }
 
   // Rooms API
   async getPublicRooms(filters?: any) {
-    const queryParams = new URLSearchParams();
-    if (filters?.maxPlayers) queryParams.append('maxPlayers', filters.maxPlayers.toString());
-    if (filters?.hasVoiceChat !== null && filters?.hasVoiceChat !== undefined) {
-      queryParams.append('hasVoiceChat', filters.hasVoiceChat.toString());
+    try {
+      const queryParams = new URLSearchParams();
+      if (filters?.maxPlayers) queryParams.append('maxPlayers', filters.maxPlayers.toString());
+      if (filters?.hasVoiceChat !== null && filters?.hasVoiceChat !== undefined) {
+        queryParams.append('hasVoiceChat', filters.hasVoiceChat.toString());
+      }
+      if (filters?.skillLevel) queryParams.append('skillLevel', filters.skillLevel);
+      
+      const query = queryParams.toString();
+      return this.get(`/rooms/public${query ? `?${query}` : ''}`);
+    } catch (error) {
+      console.log('Public rooms API not fully implemented yet');
+      return [];
     }
-    if (filters?.skillLevel) queryParams.append('skillLevel', filters.skillLevel);
-    
-    const query = queryParams.toString();
-    return this.get(`/rooms/public${query ? `?${query}` : ''}`);
   }
 
   async createRoom(roomData: any) {
@@ -173,11 +259,21 @@ class ApiService {
 
   // Matchmaking API
   async startQuickMatch(preferences: any) {
-    return this.post('/matchmaking/quick', preferences);
+    try {
+      return this.post('/matchmaking/quick', preferences);
+    } catch (error) {
+      console.log('Quick match API not implemented yet');
+      throw new Error('Quick match feature is not available yet');
+    }
   }
 
   async cancelQuickMatch() {
-    return this.post('/matchmaking/cancel');
+    try {
+      return this.post('/matchmaking/cancel');
+    } catch (error) {
+      console.log('Cancel quick match API not implemented yet');
+      throw error;
+    }
   }
 }
 

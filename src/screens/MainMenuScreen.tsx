@@ -4,29 +4,25 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootStackParamList } from '../types/navigation';
-import { Button, Card } from '../components/ui';
-import { 
-  selectUser, 
-  selectOnlineFriends, 
-  selectIsMatchmaking,
-  startQuickMatch,
-  selectMatchmakingPreferences,
-  fetchFriends,
-  setCurrentScreen,
-  addNotification
-} from '../store/slices';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { selectAuth } from '../store/slices/authSlice';
+import { addNotification, setCurrentScreen } from '../store/slices/uiSlice';
+import { selectOnlineFriends, selectFriendsList, fetchFriends } from '../store/slices/friendsSlice';
+import { selectIsMatchmaking, selectMatchmakingPreferences, startQuickMatch } from '../store/slices/roomsSlice';
 import { Ionicons } from '@expo/vector-icons';
+import { AppDispatch, RootState } from '../store/store';
 
 type MainMenuNavigationProp = StackNavigationProp<RootStackParamList, 'MainMenu'>;
 
 export const MainMenuScreen: React.FC = () => {
   const navigation = useNavigation<MainMenuNavigationProp>();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   
-  const user = useSelector(selectUser);
-  const onlineFriends = useSelector(selectOnlineFriends);
-  const isMatchmaking = useSelector(selectIsMatchmaking);
-  const matchmakingPreferences = useSelector(selectMatchmakingPreferences);
+  const { user } = useSelector(selectAuth);
+  const onlineFriends = useSelector((state: RootState) => selectOnlineFriends(state));
+  const isMatchmaking = useSelector((state: RootState) => selectIsMatchmaking(state));
+  const matchmakingPreferences = useSelector((state: RootState) => selectMatchmakingPreferences(state));
 
   useEffect(() => {
     dispatch(setCurrentScreen('MainMenu'));

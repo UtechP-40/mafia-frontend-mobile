@@ -10,6 +10,8 @@ import {
   TouchableOpacity
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -20,10 +22,13 @@ import { SocialLoginButtons } from '../components/auth/SocialLoginButtons';
 import { BiometricLogin } from '../components/auth/BiometricLogin';
 import { OnboardingFlow } from '../components/auth/OnboardingFlow';
 import { useAuth } from '../hooks/useAuth';
+import { RootStackParamList } from '../types/navigation';
 
 type AuthMode = 'login' | 'register' | 'forgot-password' | 'onboarding';
+type AuthNavigationProp = StackNavigationProp<RootStackParamList, 'Auth'>;
 
 export const AuthScreen: React.FC = () => {
+  const navigation = useNavigation<AuthNavigationProp>();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
@@ -33,6 +38,13 @@ export const AuthScreen: React.FC = () => {
     checkBiometricAvailability();
     checkFirstTimeUser();
   }, []);
+
+  // Navigate to MainMenu when authenticated
+  useEffect(() => {
+    if (isAuthenticated && !showOnboarding) {
+      navigation.replace('MainMenu');
+    }
+  }, [isAuthenticated, showOnboarding, navigation]);
 
   const checkBiometricAvailability = async () => {
     try {

@@ -1,32 +1,49 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
-import { Friend, FriendRequest } from '../../types/user';
+
+interface Friend {
+  id: string;
+  username: string;
+  avatar: string;
+  status: 'online' | 'offline' | 'in-game' | 'away';
+  lastSeen?: Date;
+}
+
+interface FriendRequest {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  fromUsername: string;
+  toUsername: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: Date;
+}
 
 interface FriendsState {
   friends: Friend[];
   friendRequests: FriendRequest[];
-  isLoading: boolean;
-  error: string | null;
   searchResults: Friend[];
+  isLoading: boolean;
   isSearching: boolean;
+  error: string | null;
 }
 
 const initialState: FriendsState = {
   friends: [],
   friendRequests: [],
-  isLoading: false,
-  error: null,
   searchResults: [],
+  isLoading: false,
   isSearching: false,
+  error: null,
 };
 
-// Async thunks for friend actions
+// Async thunks
 export const fetchFriends = createAsyncThunk(
   'friends/fetchFriends',
   async (_, { rejectWithValue }) => {
     try {
-      const data = await apiService.getFriends();
-      return data;
+      const response = await apiService.getFriends();
+      return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch friends');
     }
@@ -37,8 +54,8 @@ export const searchUsers = createAsyncThunk(
   'friends/searchUsers',
   async (query: string, { rejectWithValue }) => {
     try {
-      const data = await apiService.searchUsers(query);
-      return data;
+      const response = await apiService.searchUsers(query);
+      return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to search users');
     }
@@ -49,34 +66,10 @@ export const sendFriendRequest = createAsyncThunk(
   'friends/sendFriendRequest',
   async (userId: string, { rejectWithValue }) => {
     try {
-      const data = await apiService.sendFriendRequest(userId);
-      return data;
+      const response = await apiService.sendFriendRequest(userId);
+      return response;
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : 'Failed to send friend request');
-    }
-  }
-);
-
-export const respondToFriendRequest = createAsyncThunk(
-  'friends/respondToFriendRequest',
-  async ({ requestId, accept }: { requestId: string; accept: boolean }, { rejectWithValue }) => {
-    try {
-      const data = await apiService.respondToFriendRequest(requestId, accept);
-      return data;
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to respond to friend request');
-    }
-  }
-);
-
-export const removeFriend = createAsyncThunk(
-  'friends/removeFriend',
-  async (friendId: string, { rejectWithValue }) => {
-    try {
-      await apiService.removeFriend(friendId);
-      return friendId;
-    } catch (error) {
-      return rejectWithValue(error instanceof Error ? error.message : 'Failed to remove friend');
     }
   }
 );
@@ -91,21 +84,11 @@ export const friendsSlice = createSlice({
     clearSearchResults: (state) => {
       state.searchResults = [];
     },
-    updateFriendStatus: (state, action: PayloadAction<{ friendId: string; status: Friend['status']; isOnline: boolean }>) => {
+    updateFriendStatus: (state, action: PayloadAction<{ friendId: string; status: Friend['status'] }>) => {
       const friend = state.friends.find(f => f.id === action.payload.friendId);
       if (friend) {
         friend.status = action.payload.status;
-        friend.isOnline = action.payload.isOnline;
-        if (!action.payload.isOnline) {
-          friend.lastSeen = new Date();
-        }
       }
-    },
-    addFriendRequest: (state, action: PayloadAction<FriendRequest>) => {
-      state.friendRequests.push(action.payload);
-    },
-    removeFriendRequest: (state, action: PayloadAction<string>) => {
-      state.friendRequests = state.friendRequests.filter(req => req.id !== action.payload);
     },
   },
   extraReducers: (builder) => {
@@ -136,50 +119,18 @@ export const friendsSlice = createSlice({
       .addCase(searchUsers.rejected, (state, action) => {
         state.isSearching = false;
         state.error = action.payload as string;
-      })
-      // Send friend request
-      .addCase(sendFriendRequest.fulfilled, (state, action) => {
-        // Optionally add to pending requests or show success message
-      })
-      .addCase(sendFriendRequest.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
-      // Respond to friend request
-      .addCase(respondToFriendRequest.fulfilled, (state, action) => {
-        const { requestId, accept, friend } = action.payload;
-        state.friendRequests = state.friendRequests.filter(req => req.id !== requestId);
-        if (accept && friend) {
-          state.friends.push(friend);
-        }
-      })
-      .addCase(respondToFriendRequest.rejected, (state, action) => {
-        state.error = action.payload as string;
-      })
-      // Remove friend
-      .addCase(removeFriend.fulfilled, (state, action) => {
-        state.friends = state.friends.filter(friend => friend.id !== action.payload);
-      })
-      .addCase(removeFriend.rejected, (state, action) => {
-        state.error = action.payload as string;
       });
   },
 });
 
-export const { 
-  clearError, 
-  clearSearchResults, 
-  updateFriendStatus, 
-  addFriendRequest, 
-  removeFriendRequest 
-} = friendsSlice.actions;
+export const { clearError, clearSearchResults, updateFriendStatus } = friendsSlice.actions;
 
 // Selectors
 export const selectFriends = (state: { friends: FriendsState }) => state.friends;
 export const selectFriendsList = (state: { friends: FriendsState }) => state.friends.friends;
-export const selectFriendRequests = (state: { friends: FriendsState }) => state.friends.friendRequests;
 export const selectOnlineFriends = (state: { friends: FriendsState }) => 
-  state.friends.friends.filter(friend => friend.isOnline);
+  state.friends.friends.filter(friend => friend.status === 'online' || friend.status === 'in-game');
+export const selectFriendRequests = (state: { friends: FriendsState }) => state.friends.friendRequests;
+export const selectSearchResults = (state: { friends: FriendsState }) => state.friends.searchResults;
 export const selectFriendsLoading = (state: { friends: FriendsState }) => state.friends.isLoading;
 export const selectFriendsError = (state: { friends: FriendsState }) => state.friends.error;
-export const selectSearchResults = (state: { friends: FriendsState }) => state.friends.searchResults;
-export const selectIsSearching = (state: { friends: FriendsState }) => state.friends.isSearching;
