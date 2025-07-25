@@ -20,9 +20,9 @@ export const MainMenuScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   
   const { user } = useSelector(selectAuth);
-  const onlineFriends = useSelector((state: RootState) => selectOnlineFriends(state));
-  const isMatchmaking = useSelector((state: RootState) => selectIsMatchmaking(state));
-  const matchmakingPreferences = useSelector((state: RootState) => selectMatchmakingPreferences(state));
+  const onlineFriends = useSelector(selectOnlineFriends);
+  const isMatchmaking = useSelector(selectIsMatchmaking);
+  const matchmakingPreferences = useSelector(selectMatchmakingPreferences);
 
   useEffect(() => {
     dispatch(setCurrentScreen('MainMenu'));

@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
 import { Room, PublicRoom, MatchmakingPreferences, QuickMatchResult } from '../../types/game';
 
@@ -129,7 +129,7 @@ export const {
   clearMatchmakingResult 
 } = roomsSlice.actions;
 
-// Selectors
+// Base selectors
 export const selectRooms = (state: { rooms: RoomsState }) => state.rooms;
 export const selectPublicRooms = (state: { rooms: RoomsState }) => state.rooms.publicRooms;
 export const selectMatchmakingPreferences = (state: { rooms: RoomsState }) => state.rooms.matchmakingPreferences;
@@ -137,3 +137,30 @@ export const selectIsMatchmaking = (state: { rooms: RoomsState }) => state.rooms
 export const selectMatchmakingResult = (state: { rooms: RoomsState }) => state.rooms.matchmakingResult;
 export const selectRoomsLoading = (state: { rooms: RoomsState }) => state.rooms.isLoading;
 export const selectRoomsError = (state: { rooms: RoomsState }) => state.rooms.error;
+
+// Memoized selectors
+export const selectFilteredPublicRooms = createSelector(
+  [selectPublicRooms, (state: { rooms: RoomsState }) => state.rooms.filters],
+  (rooms, filters) => {
+    if (!rooms || !Array.isArray(rooms)) {
+      return [];
+    }
+    
+    if (!filters || Object.keys(filters).length === 0) {
+      return rooms;
+    }
+    
+    return rooms.filter(room => {
+      if (filters.maxPlayers && room.currentPlayers > filters.maxPlayers) {
+        return false;
+      }
+      if (filters.hasVoiceChat !== undefined && room.hasVoiceChat !== filters.hasVoiceChat) {
+        return false;
+      }
+      if (filters.skillLevel && filters.skillLevel !== 'any' && room.skillLevel !== filters.skillLevel) {
+        return false;
+      }
+      return true;
+    });
+  }
+);

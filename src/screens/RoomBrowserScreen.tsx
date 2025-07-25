@@ -19,16 +19,11 @@ import {
   selectPublicRooms,
   selectRoomsLoading,
   selectRoomsError,
-  selectRoomFilters,
   fetchPublicRooms,
-  joinPublicRoom,
-  createPublicRoom,
   setFilters,
-  clearFilters,
-  clearRoomsError,
-  setCurrentScreen,
-  addNotification
-} from '../store/slices';
+  clearError as clearRoomsError
+} from '../store/slices/roomsSlice';
+import { setCurrentScreen, addNotification } from '../store/slices/uiSlice';
 import { Ionicons } from '@expo/vector-icons';
 
 type RoomBrowserNavigationProp = StackNavigationProp<RootStackParamList, 'RoomBrowser'>;
@@ -40,7 +35,7 @@ export const RoomBrowserScreen: React.FC = () => {
   const publicRooms = useSelector(selectPublicRooms);
   const isLoading = useSelector(selectRoomsLoading);
   const error = useSelector(selectRoomsError);
-  const filters = useSelector(selectRoomFilters);
+  const filters = useSelector((state: any) => state.rooms.filters);
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
@@ -68,17 +63,11 @@ export const RoomBrowserScreen: React.FC = () => {
   };
 
   const handleJoinRoom = (roomId: string, roomName: string) => {
-    dispatch(joinPublicRoom(roomId))
-      .unwrap()
-      .then(() => {
-        navigation.navigate('Lobby', { roomId });
-      })
-      .catch((error) => {
-        dispatch(addNotification({
-          message: error || `Failed to join ${roomName}`,
-          type: 'error'
-        }));
-      });
+    // TODO: Implement room joining when backend API is ready
+    dispatch(addNotification({
+      message: 'Room joining feature coming soon!',
+      type: 'info'
+    }));
   };
 
   const handleCreateRoom = () => {
@@ -99,25 +88,12 @@ export const RoomBrowserScreen: React.FC = () => {
       return;
     }
 
-    dispatch(createPublicRoom({
-      name: newRoomName.trim(),
-      maxPlayers,
-      enableVoiceChat: newRoomVoiceChat
-    }))
-      .unwrap()
-      .then((room) => {
-        setShowCreateModal(false);
-        setNewRoomName('');
-        setNewRoomMaxPlayers('8');
-        setNewRoomVoiceChat(true);
-        navigation.navigate('Lobby', { roomId: room.id });
-      })
-      .catch((error) => {
-        dispatch(addNotification({
-          message: error || 'Failed to create room',
-          type: 'error'
-        }));
-      });
+    // TODO: Implement room creation when backend API is ready
+    dispatch(addNotification({
+      message: 'Room creation feature coming soon!',
+      type: 'info'
+    }));
+    setShowCreateModal(false);
   };
 
   const handleApplyFilters = (newFilters: any) => {
@@ -126,7 +102,7 @@ export const RoomBrowserScreen: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    dispatch(clearFilters());
+    dispatch(setFilters({}));
     setShowFiltersModal(false);
   };
 

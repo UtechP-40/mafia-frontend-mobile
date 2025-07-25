@@ -18,18 +18,15 @@ import {
   selectFriendsList,
   selectFriendRequests,
   selectSearchResults,
-  selectIsSearching,
+  selectFriendsLoading as selectIsSearching,
   selectFriendsError,
   fetchFriends,
   searchUsers,
   sendFriendRequest,
-  respondToFriendRequest,
-  removeFriend,
   clearSearchResults,
-  clearFriendsError,
-  setCurrentScreen,
-  addNotification
-} from '../store/slices';
+  clearError as clearFriendsError
+} from '../store/slices/friendsSlice';
+import { setCurrentScreen, addNotification } from '../store/slices/uiSlice';
 import { Ionicons } from '@expo/vector-icons';
 
 type FriendsNavigationProp = StackNavigationProp<RootStackParamList, 'Friends'>;
@@ -86,37 +83,19 @@ export const FriendsScreen: React.FC = () => {
   };
 
   const handleAcceptFriendRequest = (requestId: string, username: string) => {
-    dispatch(respondToFriendRequest({ requestId, accept: true }))
-      .unwrap()
-      .then(() => {
-        dispatch(addNotification({
-          message: `You are now friends with ${username}`,
-          type: 'success'
-        }));
-      })
-      .catch((error) => {
-        dispatch(addNotification({
-          message: error || 'Failed to accept friend request',
-          type: 'error'
-        }));
-      });
+    // TODO: Implement friend request acceptance when backend API is ready
+    dispatch(addNotification({
+      message: 'Friend request features coming soon!',
+      type: 'info'
+    }));
   };
 
   const handleDeclineFriendRequest = (requestId: string) => {
-    dispatch(respondToFriendRequest({ requestId, accept: false }))
-      .unwrap()
-      .then(() => {
-        dispatch(addNotification({
-          message: 'Friend request declined',
-          type: 'info'
-        }));
-      })
-      .catch((error) => {
-        dispatch(addNotification({
-          message: error || 'Failed to decline friend request',
-          type: 'error'
-        }));
-      });
+    // TODO: Implement friend request decline when backend API is ready
+    dispatch(addNotification({
+      message: 'Friend request features coming soon!',
+      type: 'info'
+    }));
   };
 
   const handleRemoveFriend = (friendId: string, username: string) => {
@@ -129,20 +108,11 @@ export const FriendsScreen: React.FC = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            dispatch(removeFriend(friendId))
-              .unwrap()
-              .then(() => {
-                dispatch(addNotification({
-                  message: `${username} removed from friends`,
-                  type: 'info'
-                }));
-              })
-              .catch((error) => {
-                dispatch(addNotification({
-                  message: error || 'Failed to remove friend',
-                  type: 'error'
-                }));
-              });
+            // TODO: Implement friend removal when backend API is ready
+            dispatch(addNotification({
+              message: 'Friend removal features coming soon!',
+              type: 'info'
+            }));
           }
         }
       ]

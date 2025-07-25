@@ -92,9 +92,12 @@ export interface PublicRoom {
   name: string;
   hostUsername: string;
   playerCount: number;
+  currentPlayers: number;
   maxPlayers: number;
   status: RoomStatus;
   settings: RoomSettings;
+  hasVoiceChat: boolean;
+  skillLevel: string;
   createdAt: Date;
 }
 

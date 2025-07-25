@@ -14,17 +14,15 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootStackParamList } from '../types/navigation';
 import { Button, Card } from '../components/ui';
+import { selectAuth, logout } from '../store/slices/authSlice';
 import { 
-  selectUser,
   selectSettings,
   selectTheme,
-  logout,
   updateSettings,
-  setTheme,
   toggleTheme,
   setCurrentScreen,
   addNotification
-} from '../store/slices';
+} from '../store/slices/uiSlice';
 import { Ionicons } from '@expo/vector-icons';
 
 type SettingsNavigationProp = StackNavigationProp<RootStackParamList, 'Settings'>;
@@ -33,7 +31,7 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<SettingsNavigationProp>();
   const dispatch = useDispatch();
   
-  const user = useSelector(selectUser);
+  const { user } = useSelector(selectAuth);
   const settings = useSelector(selectSettings);
   const theme = useSelector(selectTheme);
   

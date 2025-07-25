@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { apiService } from '../../services/api';
 
 interface Friend {
@@ -125,12 +125,21 @@ export const friendsSlice = createSlice({
 
 export const { clearError, clearSearchResults, updateFriendStatus } = friendsSlice.actions;
 
-// Selectors
+// Base selectors
 export const selectFriends = (state: { friends: FriendsState }) => state.friends;
 export const selectFriendsList = (state: { friends: FriendsState }) => state.friends.friends;
-export const selectOnlineFriends = (state: { friends: FriendsState }) => 
-  state.friends.friends.filter(friend => friend.status === 'online' || friend.status === 'in-game');
 export const selectFriendRequests = (state: { friends: FriendsState }) => state.friends.friendRequests;
 export const selectSearchResults = (state: { friends: FriendsState }) => state.friends.searchResults;
 export const selectFriendsLoading = (state: { friends: FriendsState }) => state.friends.isLoading;
 export const selectFriendsError = (state: { friends: FriendsState }) => state.friends.error;
+
+// Memoized selectors
+export const selectOnlineFriends = createSelector(
+  [selectFriendsList],
+  (friends) => {
+    if (!friends || !Array.isArray(friends)) {
+      return [];
+    }
+    return friends.filter(friend => friend.status === 'online' || friend.status === 'in-game');
+  }
+);
