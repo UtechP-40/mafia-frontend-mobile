@@ -2,3 +2,4 @@
 export * from './useAuth';
 export * from './useGame';
 export * from './useSocket';
+export * from './useGameSync';

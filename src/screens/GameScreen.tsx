@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSocket } from '../hooks/useSocket';
+import { useGameSync } from '../hooks/useGameSync';
 import { 
   selectGame,
   selectCurrentPlayer,
@@ -57,8 +58,19 @@ export const GameScreen: React.FC = () => {
   const gameError = useSelector(selectGameError);
   const connectionError = useSelector(selectConnectionError);
 
-  // Socket connection
+  // Socket connection and game sync
   const { emit, on, off } = useSocket(token);
+  const { 
+    performOptimisticUpdate, 
+    getSyncStats, 
+    forceSync,
+    isResyncing,
+    conflictCount 
+  } = useGameSync({
+    enableConflictResolution: true,
+    syncInterval: 3000,
+    maxRetries: 3,
+  });
 
   // Animation states
   const [phaseTransitionAnim] = useState(new Animated.Value(1));
@@ -68,40 +80,27 @@ export const GameScreen: React.FC = () => {
 
   // Game state
   const [isReconnecting, setIsReconnecting] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState(Date.now());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // Initialize socket listeners
+  // Initialize additional socket listeners (game sync handles most events)
   useEffect(() => {
     if (!isConnected || !token) return;
 
-    // Game state synchronization
-    on('game-state-update', handleGameStateUpdate);
-    on('phase-changed', handlePhaseChange);
-    on('votes-updated', handleVotesUpdate);
-    on('player-eliminated', handlePlayerElimination);
-    on('game-ended', handleGameEnd);
-    
-    // Chat events
+    // Chat events (not handled by useGameSync)
     on('chat-message', handleChatMessage);
     on('system-message', handleSystemMessage);
     
-    // Connection events
-    on('disconnect', handleDisconnect);
-    on('reconnect', handleReconnect);
-    on('sync-conflict', handleSyncConflict);
+    // Phase change for UI animations
+    on('phase-changed', handlePhaseChange);
+    on('player-eliminated', handlePlayerElimination);
+    on('game-ended', handleGameEnd);
 
     return () => {
-      off('game-state-update');
-      off('phase-changed');
-      off('votes-updated');
-      off('player-eliminated');
-      off('game-ended');
       off('chat-message');
       off('system-message');
-      off('disconnect');
-      off('reconnect');
-      off('sync-conflict');
+      off('phase-changed');
+      off('player-eliminated');
+      off('game-ended');
     };
   }, [isConnected, token]);
 
@@ -132,10 +131,6 @@ export const GameScreen: React.FC = () => {
   }, [gameError, dispatch]);
 
   // Socket event handlers
-  const handleGameStateUpdate = (data: any) => {
-    setLastSyncTime(Date.now());
-    // Game state is handled by socket middleware
-  };
 
   const handlePhaseChange = (data: { phase: GamePhase; timeRemaining: number }) => {
     // Animate phase transition
@@ -216,14 +211,8 @@ export const GameScreen: React.FC = () => {
     dispatch(setConnectionStatus(true));
     setIsReconnecting(false);
     
-    // Request game state sync
-    emit('request-sync', { lastSyncTime });
-  };
-
-  const handleSyncConflict = (data: { serverState: any; clientState: any }) => {
-    // Resolve conflicts by preferring server state
-    console.log('Sync conflict detected, resolving with server state');
-    // The socket middleware will handle the state update
+    // Force sync to get latest game state
+    forceSync();
   };
 
   // Game actions
