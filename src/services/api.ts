@@ -79,6 +79,7 @@ class ApiService {
 
       return data as ApiResponse<T>;
     } catch (error) {
+      console.table(error)
       console.error(`API request failed: ${endpoint}`, error);
       throw error;
     }

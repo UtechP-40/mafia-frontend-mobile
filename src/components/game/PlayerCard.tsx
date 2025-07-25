@@ -1,6 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring, 
+  withTiming,
+  withSequence,
+  runOnJS,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
 import { GameRole } from '../../types/game';
+import { 
+  ANIMATION_CONFIG,
+  createButtonPressAnimation,
+  createEliminationAnimation,
+  createCardFlipAnimation,
+  createPulseAnimation
+} from '../../utils/animations';
 
 interface PlayerCardProps {
   player: {
@@ -27,8 +44,109 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   isVoting = false,
   isSelected = false,
   onSelect,
-  animated = false 
+  animated = true 
 }) => {
+  // Animation values
+  const isPressed = useSharedValue(false);
+  const isEliminated = useSharedValue(!player.isAlive);
+  const isFlipped = useSharedValue(showRole);
+  const shouldPulse = useSharedValue(isVoting);
+
+  // Update animation values when props change
+  useEffect(() => {
+    isEliminated.value = !player.isAlive;
+    isFlipped.value = showRole;
+    shouldPulse.value = isVoting;
+  }, [player.isAlive, showRole, isVoting, isEliminated, isFlipped, shouldPulse]);
+
+  // Animated styles
+  const animatedCardStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    // Apply elimination animation
+    if (isEliminated.value) {
+      return createEliminationAnimation(isEliminated);
+    }
+
+    // Apply button press animation
+    if (onSelect) {
+      return createButtonPressAnimation(isPressed, !player.isAlive);
+    }
+
+    // Apply pulse animation for voting
+    if (shouldPulse.value) {
+      return createPulseAnimation(shouldPulse, 1.05);
+    }
+
+    return {};
+  });
+
+  const animatedRoleStyle = useAnimatedStyle(() => {
+    if (!animated || !showRole) return {};
+    return createCardFlipAnimation(isFlipped);
+  });
+
+  const animatedSelectionStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+    
+    return {
+      opacity: withTiming(isSelected ? 1 : 0, ANIMATION_CONFIG.timing.fast),
+      transform: [
+        {
+          scale: withSpring(
+            isSelected ? 1 : 0.8,
+            ANIMATION_CONFIG.spring.bouncy
+          ),
+        },
+      ],
+    };
+  });
+
+  const animatedVotingStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+    
+    return {
+      opacity: withTiming(isVoting ? 1 : 0, ANIMATION_CONFIG.timing.fast),
+      transform: [
+        {
+          scale: withSpring(
+            isVoting ? 1 : 0.8,
+            ANIMATION_CONFIG.spring.bouncy
+          ),
+        },
+      ],
+    };
+  });
+
+  const animatedReadyDotStyle = useAnimatedStyle(() => {
+    if (!animated || !showReadyState) return {};
+    
+    const isReady = player.isReady || player.isHost;
+    return {
+      opacity: withTiming(isReady ? 1 : 0.3, ANIMATION_CONFIG.timing.medium),
+      transform: [
+        {
+          scale: withSpring(
+            isReady ? 1.2 : 1,
+            ANIMATION_CONFIG.spring.gentle
+          ),
+        },
+      ],
+    };
+  });
+
+  const handlePressIn = () => {
+    if (animated && onSelect && player.isAlive) {
+      isPressed.value = true;
+    }
+  };
+
+  const handlePressOut = () => {
+    if (animated && onSelect) {
+      isPressed.value = false;
+    }
+  };
+
   const getCardStyle = () => {
     if (!player.isAlive) return styles.eliminated;
     if (isSelected) return styles.selected;
@@ -74,24 +192,28 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     }
   };
 
-  const CardComponent = onSelect ? TouchableOpacity : View;
+  const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
+  const CardComponent = onSelect ? AnimatedTouchableOpacity : Animated.View;
 
   return (
     <CardComponent 
-      style={[styles.cardContainer, getCardStyle()]}
+      style={[styles.cardContainer, getCardStyle(), animatedCardStyle]}
       onPress={onSelect}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={!player.isAlive || !onSelect}
       activeOpacity={0.7}
     >
-      {/* Avatar */}
-      <View style={[
+      {/* Avatar with role flip animation */}
+      <Animated.View style={[
         styles.avatar,
-        showRole && player.role && { backgroundColor: getRoleColor(player.role) }
+        showRole && player.role && { backgroundColor: getRoleColor(player.role) },
+        animatedRoleStyle
       ]}>
         <Text style={styles.avatarText}>
           {getAvatarText(player.username)}
         </Text>
-      </View>
+      </Animated.View>
       
       {/* Player Info */}
       <View style={styles.playerInfo}>
@@ -99,16 +221,17 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           {player.username}
         </Text>
         
-        {/* Role Badge */}
+        {/* Role Badge with flip animation */}
         {showRole && player.role && (
-          <View style={[
+          <Animated.View style={[
             styles.roleBadge,
-            { backgroundColor: getRoleColor(player.role) }
+            { backgroundColor: getRoleColor(player.role) },
+            animatedRoleStyle
           ]}>
             <Text style={styles.roleBadgeText}>
               {getRoleDisplayName(player.role)}
             </Text>
-          </View>
+          </Animated.View>
         )}
         
         {/* Status Indicators */}
@@ -135,25 +258,26 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
         </View>
       </View>
 
-      {/* Voting Indicator */}
+      {/* Voting Indicator with animation */}
       {isVoting && (
-        <View style={styles.votingIndicator}>
+        <Animated.View style={[styles.votingIndicator, animatedVotingStyle]}>
           <Text style={styles.votingText}>VOTE</Text>
-        </View>
+        </Animated.View>
       )}
 
-      {/* Selection Indicator */}
+      {/* Selection Indicator with animation */}
       {isSelected && (
-        <View style={styles.selectionIndicator}>
+        <Animated.View style={[styles.selectionIndicator, animatedSelectionStyle]}>
           <Text style={styles.selectionText}>✓</Text>
-        </View>
+        </Animated.View>
       )}
 
-      {/* Ready Indicator Dot */}
+      {/* Ready Indicator Dot with animation */}
       {showReadyState && (
-        <View style={[
+        <Animated.View style={[
           styles.readyDot,
-          (player.isReady || player.isHost) && styles.readyDotActive
+          (player.isReady || player.isHost) && styles.readyDotActive,
+          animatedReadyDotStyle
         ]} />
       )}
 

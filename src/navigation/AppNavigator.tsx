@@ -14,8 +14,20 @@ import { RootStackParamList } from '../types/navigation';
 import { selectAuth } from '../store/slices/authSlice';
 import { refreshAuthToken } from '../store/slices/authSlice';
 import { AppDispatch } from '../store/store';
+import {View,StyleSheet} from 'react-native'
 
 const Stack = createStackNavigator<RootStackParamList>();
+const styles = StyleSheet.create({
+  container: {
+    height: '98%',
+    backgroundColor: '#000'
+  },
+  subContainer: {
+    flex: 3,
+    justifyContent:'center',
+    alignItems: 'center',
+  }
+})
 
 export const AppNavigator: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -46,13 +58,16 @@ export const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer>
+    <View>
+      <View style={styles?.container}>
+      <NavigationContainer>
       <Stack.Navigator
         initialRouteName={isAuthenticated ? "MainMenu" : "Auth"}
         screenOptions={{
           headerShown: false,
           gestureEnabled: true,
-        }}
+          animationEnabled: true 
+         }}
       >
         {isAuthenticated ? (
           // Authenticated screens
@@ -64,6 +79,7 @@ export const AppNavigator: React.FC = () => {
             <Stack.Screen name="Lobby" component={LobbyScreen} />
             <Stack.Screen name="Game" component={GameScreen} />
             <Stack.Screen name="Results" component={ResultsScreen} />
+            <Stack.Screen name="Auth" component={AuthScreen} />
           </>
         ) : (
           // Unauthenticated screens
@@ -71,5 +87,7 @@ export const AppNavigator: React.FC = () => {
         )}
       </Stack.Navigator>
     </NavigationContainer>
+    </View>
+    </View>
   );
 };

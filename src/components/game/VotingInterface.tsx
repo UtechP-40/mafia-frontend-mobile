@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  withSpring,
+  withSequence,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
 import { Player } from '../../types/game';
 import { PlayerCard } from './PlayerCard';
 import { Button } from '../ui/Button';
+import { 
+  ANIMATION_CONFIG,
+  createEntranceAnimation,
+  createStaggerAnimation,
+  createCountdownAnimation
+} from '../../utils/animations';
 
 interface VotingInterfaceProps {
   eligibleTargets: Player[];
@@ -26,9 +41,18 @@ export const VotingInterface: React.FC<VotingInterfaceProps> = ({
   const [selectedTarget, setSelectedTarget] = useState<string | null>(currentVote || null);
   const [isConfirming, setIsConfirming] = useState(false);
 
+  // Animation values
+  const isVisible = useSharedValue(true);
+  const timerValue = useSharedValue(timeRemaining);
+  const confirmingScale = useSharedValue(1);
+
   useEffect(() => {
     setSelectedTarget(currentVote || null);
   }, [currentVote]);
+
+  useEffect(() => {
+    timerValue.value = timeRemaining;
+  }, [timeRemaining, timerValue]);
 
   const handlePlayerSelect = (playerId: string) => {
     if (hasVoted) return;
@@ -43,6 +67,10 @@ export const VotingInterface: React.FC<VotingInterfaceProps> = ({
   const handleConfirmVote = () => {
     if (selectedTarget && !hasVoted) {
       setIsConfirming(true);
+      confirmingScale.value = withSequence(
+        withSpring(1.1, ANIMATION_CONFIG.spring.bouncy),
+        withSpring(1, ANIMATION_CONFIG.spring.gentle)
+      );
       onVote(selectedTarget);
       setTimeout(() => setIsConfirming(false), 1000);
     }
@@ -66,25 +94,78 @@ export const VotingInterface: React.FC<VotingInterfaceProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Animated styles
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    return createEntranceAnimation(isVisible, 0, 'up');
+  });
+
+  const animatedTimerStyle = useAnimatedStyle(() => {
+    const progress = interpolate(
+      timeRemaining,
+      [0, 60],
+      [0, 1],
+      Extrapolate.CLAMP
+    );
+    
+    const scale = interpolate(
+      progress,
+      [0, 0.2, 1],
+      [1.3, 1.1, 1],
+      Extrapolate.CLAMP
+    );
+    
+    return {
+      transform: [{ scale: withSpring(scale, ANIMATION_CONFIG.spring.gentle) }],
+    };
+  });
+
+  const animatedInstructionsStyle = useAnimatedStyle(() => {
+    return {
+      opacity: withTiming(hasVoted ? 0.7 : 1, ANIMATION_CONFIG.timing.medium),
+      transform: [
+        {
+          scale: withSpring(hasVoted ? 0.95 : 1, ANIMATION_CONFIG.spring.gentle),
+        },
+      ],
+    };
+  });
+
+  const animatedButtonStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: confirmingScale.value }],
+    };
+  });
+
+  const animatedVoteStatusStyle = useAnimatedStyle(() => {
+    return {
+      opacity: withTiming(hasVoted ? 1 : 0, ANIMATION_CONFIG.timing.medium),
+      transform: [
+        {
+          translateY: withSpring(hasVoted ? 0 : 20, ANIMATION_CONFIG.spring.gentle),
+        },
+      ],
+    };
+  });
+
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, animatedContainerStyle]}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Cast Your Vote</Text>
-        <View style={styles.timerContainer}>
+        <Animated.View style={[styles.timerContainer, animatedTimerStyle]}>
           <Text style={[styles.timer, { color: getTimerColor() }]}>
             {formatTime(timeRemaining)}
           </Text>
           <Text style={styles.timerLabel}>remaining</Text>
-        </View>
+        </Animated.View>
       </View>
 
       {/* Instructions */}
-      <Text style={styles.instructions}>
+      <Animated.Text style={[styles.instructions, animatedInstructionsStyle]}>
         {hasVoted 
           ? 'You have voted. Waiting for other players...' 
           : 'Select a player to eliminate:'}
-      </Text>
+      </Animated.Text>
 
       {/* Player Grid */}
       <ScrollView 
@@ -92,21 +173,32 @@ export const VotingInterface: React.FC<VotingInterfaceProps> = ({
         contentContainerStyle={styles.playersGrid}
         showsVerticalScrollIndicator={false}
       >
-        {eligibleTargets.map((player) => (
-          <View key={player.id} style={styles.playerCardWrapper}>
-            <PlayerCard
-              player={player}
-              isSelected={selectedTarget === player.id}
-              onSelect={hasVoted ? undefined : () => handlePlayerSelect(player.id)}
-              showRole={false}
-            />
-          </View>
-        ))}
+        {eligibleTargets.map((player, index) => {
+          const animatedPlayerStyle = useAnimatedStyle(() => {
+            return createStaggerAnimation(isVisible, index, 100);
+          });
+
+          return (
+            <Animated.View 
+              key={player.id} 
+              style={[styles.playerCardWrapper, animatedPlayerStyle]}
+            >
+              <PlayerCard
+                player={player}
+                isSelected={selectedTarget === player.id}
+                isVoting={!hasVoted && selectedTarget === player.id}
+                onSelect={hasVoted ? undefined : () => handlePlayerSelect(player.id)}
+                showRole={false}
+                animated={true}
+              />
+            </Animated.View>
+          );
+        })}
       </ScrollView>
 
       {/* Action Buttons */}
       {!hasVoted && (
-        <View style={styles.actionButtons}>
+        <Animated.View style={[styles.actionButtons, animatedButtonStyle]}>
           <Button
             title={isConfirming ? 'Voting...' : 'Confirm Vote'}
             onPress={handleConfirmVote}
@@ -122,18 +214,18 @@ export const VotingInterface: React.FC<VotingInterfaceProps> = ({
               style={styles.skipButton}
             />
           )}
-        </View>
+        </Animated.View>
       )}
 
       {/* Vote Status */}
       {hasVoted && currentVote && (
-        <View style={styles.voteStatus}>
+        <Animated.View style={[styles.voteStatus, animatedVoteStatusStyle]}>
           <Text style={styles.voteStatusText}>
             You voted for: {eligibleTargets.find(p => p.id === currentVote)?.username}
           </Text>
-        </View>
+        </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 };
 

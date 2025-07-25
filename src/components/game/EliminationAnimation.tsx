@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  withSpring,
+  withSequence,
+  withDelay,
+  withRepeat,
+  runOnJS,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
 import { Player } from '../../types/game';
+import { ANIMATION_CONFIG } from '../../utils/animations';
 
 interface EliminationAnimationProps {
   eliminatedPlayer: Player | null;
