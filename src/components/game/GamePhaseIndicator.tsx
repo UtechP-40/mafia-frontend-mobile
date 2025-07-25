@@ -1,6 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withTiming,
+  withSpring,
+  withSequence,
+  withRepeat,
+  interpolate,
+  Extrapolate
+} from 'react-native-reanimated';
 import { GamePhase } from '../../types/game';
+import { 
+  ANIMATION_CONFIG,
+  createPulseAnimation,
+  createCountdownAnimation
+} from '../../utils/animations';
 
 interface GamePhaseIndicatorProps {
   phase: GamePhase;
@@ -15,34 +30,56 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
   dayNumber = 1,
   animated = true,
 }) => {
-  const [pulseAnim] = useState(new Animated.Value(1));
-  const [progressAnim] = useState(new Animated.Value(1));
+  // Animation values
+  const phaseTransition = useSharedValue(0);
+  const shouldPulse = useSharedValue(false);
+  const progressValue = useSharedValue(1);
+  const timerScale = useSharedValue(1);
 
   useEffect(() => {
-    if (animated) {
-      // Pulse animation for urgent phases
-      if (timeRemaining <= 10 && (phase === 'voting' || phase === 'night')) {
-        const pulse = Animated.loop(
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.1,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1,
-              duration: 500,
-              useNativeDriver: true,
-            }),
-          ])
-        );
-        pulse.start();
-        return () => pulse.stop();
-      } else {
-        pulseAnim.setValue(1);
-      }
+    // Trigger phase transition animation
+    phaseTransition.value = withSequence(
+      withTiming(0.8, ANIMATION_CONFIG.timing.fast),
+      withSpring(1, ANIMATION_CONFIG.spring.bouncy)
+    );
+
+    // Update pulse animation for urgent phases
+    shouldPulse.value = timeRemaining <= 10 && (phase === 'voting' || phase === 'night');
+    
+    // Update progress
+    const maxTime = getMaxTimeForPhase(phase);
+    progressValue.value = withTiming(
+      Math.max(0, Math.min(1, timeRemaining / maxTime)),
+      ANIMATION_CONFIG.timing.medium
+    );
+
+    // Timer urgency animation
+    if (timeRemaining <= 10) {
+      timerScale.value = withRepeat(
+        withSequence(
+          withTiming(1.1, ANIMATION_CONFIG.timing.fast),
+          withTiming(1, ANIMATION_CONFIG.timing.fast)
+        ),
+        -1,
+        true
+      );
+    } else {
+      timerScale.value = withTiming(1, ANIMATION_CONFIG.timing.fast);
     }
-  }, [timeRemaining, phase, animated, pulseAnim]);
+  }, [phase, timeRemaining, phaseTransition, shouldPulse, progressValue, timerScale]);
+
+  const getMaxTimeForPhase = (currentPhase: GamePhase) => {
+    switch (currentPhase) {
+      case 'day':
+        return 300; // 5 minutes
+      case 'night':
+        return 120; // 2 minutes
+      case 'voting':
+        return 60; // 1 minute
+      default:
+        return 300;
+    }
+  };
 
   const getPhaseInfo = () => {
     switch (phase) {
@@ -103,12 +140,85 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
     return '#ffffff';
   };
 
-  const getProgressWidth = () => {
-    // Assuming max phase time is 300 seconds (5 minutes)
-    const maxTime = 300;
-    const progress = Math.max(0, Math.min(1, timeRemaining / maxTime));
-    return `${progress * 100}%`;
-  };
+  // Animated styles
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    const baseStyle = {
+      transform: [{ scale: phaseTransition.value }],
+    };
+
+    if (shouldPulse.value) {
+      return {
+        ...baseStyle,
+        ...createPulseAnimation(shouldPulse, 1.02),
+      };
+    }
+
+    return baseStyle;
+  });
+
+  const animatedProgressStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    const width = interpolate(
+      progressValue.value,
+      [0, 1],
+      [0, 100],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      width: `${width}%`,
+    };
+  });
+
+  const animatedTimerStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    return {
+      transform: [{ scale: timerScale.value }],
+      color: getTimerColor(),
+    };
+  });
+
+  const animatedIconStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    // Rotate icon based on phase
+    const rotation = interpolate(
+      phaseTransition.value,
+      [0, 1],
+      [0, phase === 'night' ? 360 : 0],
+      Extrapolate.CLAMP
+    );
+
+    return {
+      transform: [
+        { rotate: `${rotation}deg` },
+        { scale: phaseTransition.value },
+      ],
+    };
+  });
+
+  const animatedSpecialIndicatorStyle = useAnimatedStyle(() => {
+    if (!animated) return {};
+
+    return {
+      opacity: withTiming(
+        (phase === 'night' || phase === 'voting') ? 1 : 0,
+        ANIMATION_CONFIG.timing.medium
+      ),
+      transform: [
+        {
+          translateY: withSpring(
+            (phase === 'night' || phase === 'voting') ? 0 : 10,
+            ANIMATION_CONFIG.spring.gentle
+          ),
+        },
+      ],
+    };
+  });
 
   const phaseInfo = getPhaseInfo();
 
@@ -117,13 +227,15 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
       style={[
         styles.container,
         { backgroundColor: phaseInfo.color },
-        animated && { transform: [{ scale: pulseAnim }] }
+        animatedContainerStyle,
       ]}
     >
       {/* Phase Header */}
       <View style={styles.header}>
         <View style={styles.phaseInfo}>
-          <Text style={styles.icon}>{phaseInfo.icon}</Text>
+          <Animated.Text style={[styles.icon, animatedIconStyle]}>
+            {phaseInfo.icon}
+          </Animated.Text>
           <View style={styles.textContainer}>
             <Text style={styles.title}>{phaseInfo.title}</Text>
             <Text style={styles.subtitle}>{phaseInfo.subtitle}</Text>
@@ -133,9 +245,9 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
         {/* Timer */}
         {phase !== 'lobby' && phase !== 'results' && timeRemaining > 0 && (
           <View style={styles.timerContainer}>
-            <Text style={[styles.timer, { color: getTimerColor() }]}>
+            <Animated.Text style={[styles.timer, animatedTimerStyle]}>
               {formatTime(timeRemaining)}
-            </Text>
+            </Animated.Text>
           </View>
         )}
       </View>
@@ -144,13 +256,11 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
       {phase !== 'lobby' && phase !== 'results' && timeRemaining > 0 && (
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
-            <View 
+            <Animated.View 
               style={[
                 styles.progressBar,
-                { 
-                  width: getProgressWidth(),
-                  backgroundColor: getTimerColor(),
-                }
+                { backgroundColor: getTimerColor() },
+                animatedProgressStyle,
               ]} 
             />
           </View>
@@ -158,17 +268,19 @@ export const GamePhaseIndicator: React.FC<GamePhaseIndicatorProps> = ({
       )}
 
       {/* Phase-specific indicators */}
-      {phase === 'night' && (
-        <View style={styles.nightIndicator}>
-          <Text style={styles.nightText}>🤫 Mafia is choosing their target...</Text>
-        </View>
-      )}
+      <Animated.View style={[animatedSpecialIndicatorStyle]}>
+        {phase === 'night' && (
+          <View style={styles.nightIndicator}>
+            <Text style={styles.nightText}>🤫 Mafia is choosing their target...</Text>
+          </View>
+        )}
 
-      {phase === 'voting' && (
-        <View style={styles.votingIndicator}>
-          <Text style={styles.votingText}>⚡ Time to vote! Choose wisely...</Text>
-        </View>
-      )}
+        {phase === 'voting' && (
+          <View style={styles.votingIndicator}>
+            <Text style={styles.votingText}>⚡ Time to vote! Choose wisely...</Text>
+          </View>
+        )}
+      </Animated.View>
     </Animated.View>
   );
 };
