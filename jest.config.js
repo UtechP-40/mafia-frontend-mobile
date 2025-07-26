@@ -22,7 +22,7 @@ module.exports = {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@reduxjs/toolkit|react-redux|react-native|@react-native|@testing-library|react-native-reanimated)/)',
+    'node_modules/(?!(@reduxjs/toolkit|react-redux|react-native|@react-native|@testing-library|react-native-reanimated|@react-navigation|expo|@expo)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

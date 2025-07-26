@@ -1,446 +1,321 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, screen, act } from '@testing-library/react-native';
 import { VotingInterface } from '../VotingInterface';
+import { Player } from '../../../types/game';
+
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  Reanimated.default.call = () => {};
+  return Reanimated;
+});
 
 describe('VotingInterface', () => {
-  const mockPlayers = [
+  const mockPlayers: Player[] = [
     {
       id: 'player-1',
-      username: 'Alice',
-      avatar: '',
+      username: 'Player1',
+      avatar: 'avatar1.jpg',
       isAlive: true,
       isHost: false,
     },
     {
       id: 'player-2',
-      username: 'Bob',
-      avatar: '',
-      isAlive: true,
-      isHost: false,
-    },
-    {
-      id: 'player-3',
-      username: 'Charlie',
-      avatar: '',
+      username: 'Player2',
+      avatar: 'avatar2.jpg',
       isAlive: true,
       isHost: true,
     },
+    {
+      id: 'player-3',
+      username: 'Player3',
+      avatar: 'avatar3.jpg',
+      isAlive: false,
+      isHost: false,
+    },
   ];
 
-  const defaultProps = {
-    eligibleTargets: mockPlayers,
-    timeRemaining: 60,
-    hasVoted: false,
-    onVote: jest.fn(),
-  };
+  const mockOnVote = jest.fn();
+  const mockOnSkip = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Basic Rendering', () => {
-    it('renders voting interface correctly', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      expect(getByText('Cast Your Vote')).toBeTruthy();
-      expect(getByText('Select a player to eliminate:')).toBeTruthy();
-      expect(getByText('1:00')).toBeTruthy();
-      expect(getByText('remaining')).toBeTruthy();
-    });
+  it('renders voting interface correctly', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('renders all eligible players', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      mockPlayers.forEach(player => {
-        expect(getByText(player.username)).toBeTruthy();
-      });
-    });
+    expect(screen.getByText('Vote to Eliminate')).toBeTruthy();
+    expect(screen.getByText('Time remaining: 1:00')).toBeTruthy();
+    expect(screen.getByText('Skip Vote')).toBeTruthy();
+  });
 
-    it('shows confirm vote button when not voted', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      expect(getByText('Confirm Vote')).toBeTruthy();
-    });
+  it('displays eligible targets correctly', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('shows skip vote button when allowed', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} allowSkip={true} />
-      );
-      
-      expect(getByText('Skip Vote')).toBeTruthy();
-    });
+    expect(screen.getByText('Player1')).toBeTruthy();
+    expect(screen.getByText('Player2')).toBeTruthy();
+    expect(screen.queryByText('Player3')).toBeNull(); // Eliminated player should not appear
+  });
 
-    it('does not show skip vote button when not allowed', () => {
-      const { queryByText } = render(
-        <VotingInterface {...defaultProps} allowSkip={false} />
-      );
-      
-      expect(queryByText('Skip Vote')).toBeNull();
+  it('formats time remaining correctly', () => {
+    const { rerender } = render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={125}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
+
+    expect(screen.getByText('Time remaining: 2:05')).toBeTruthy();
+
+    rerender(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={5}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
+
+    expect(screen.getByText('Time remaining: 0:05')).toBeTruthy();
+  });
+
+  it('shows urgent state when time is low', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={10}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
+
+    expect(screen.getByTestId('timer')).toHaveStyle({
+      color: '#FF3B30',
     });
   });
 
-  describe('Timer Display', () => {
-    it('formats time correctly for minutes and seconds', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={125} />
-      );
-      
-      expect(getByText('2:05')).toBeTruthy();
-    });
+  it('calls onVote when player is selected', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('formats time correctly for seconds only', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={45} />
-      );
-      
-      expect(getByText('0:45')).toBeTruthy();
-    });
+    const player1Card = screen.getByText('Player1');
+    fireEvent.press(player1Card);
 
-    it('applies urgent color when time is low', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={5} />
-      );
-      
-      const timer = getByText('0:05');
-      expect(timer.props.style).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ color: '#ef4444' })
-        ])
-      );
-    });
+    expect(mockOnVote).toHaveBeenCalledWith('player-1');
+  });
 
-    it('applies warning color when time is moderate', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={25} />
-      );
-      
-      const timer = getByText('0:25');
-      expect(timer.props.style).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ color: '#f59e0b' })
-        ])
-      );
-    });
+  it('calls onSkip when skip button is pressed', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('applies normal color when time is plenty', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={60} />
-      );
-      
-      const timer = getByText('1:00');
-      expect(timer.props.style).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ color: '#10b981' })
-        ])
-      );
+    const skipButton = screen.getByText('Skip Vote');
+    fireEvent.press(skipButton);
+
+    expect(mockOnSkip).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows selected player correctly', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        selectedTarget="player-1"
+      />
+    );
+
+    const player1Card = screen.getByTestId('player-card-player-1');
+    expect(player1Card).toHaveStyle({
+      borderColor: '#007AFF',
+      borderWidth: 2,
     });
   });
 
-  describe('Player Selection', () => {
-    it('allows selecting a player when not voted', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      fireEvent.press(aliceCard);
-      
-      // Should be able to select (no error thrown)
-      expect(aliceCard).toBeTruthy();
-    });
+  it('disables voting when hasVoted is true', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        hasVoted={true}
+      />
+    );
 
-    it('toggles selection when clicking same player twice', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      
-      // First click - select
-      fireEvent.press(aliceCard);
-      // Second click - deselect (should work without error)
-      fireEvent.press(aliceCard);
-      
-      expect(aliceCard).toBeTruthy();
-    });
-
-    it('changes selection when clicking different players', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      const bobCard = getByText('Bob').parent?.parent?.parent;
-      
-      fireEvent.press(aliceCard);
-      fireEvent.press(bobCard);
-      
-      expect(bobCard).toBeTruthy();
-    });
-
-    it('does not allow selection when already voted', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} hasVoted={true} />
-      );
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      fireEvent.press(aliceCard);
-      
-      // Should not crash but also should not allow interaction
-      expect(aliceCard).toBeTruthy();
-    });
+    expect(screen.getByText('Vote Submitted')).toBeTruthy();
+    
+    const player1Card = screen.getByTestId('player-card-player-1');
+    expect(player1Card.props.disabled).toBe(true);
   });
 
-  describe('Vote Confirmation', () => {
-    it('enables confirm button when player is selected', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      fireEvent.press(aliceCard);
-      
-      const confirmButton = getByText('Confirm Vote');
-      expect(confirmButton.parent?.props.disabled).toBeFalsy();
-    });
+  it('shows vote counts when provided', () => {
+    const voteCounts = {
+      'player-1': 2,
+      'player-2': 1,
+    };
 
-    it('disables confirm button when no player is selected', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const confirmButton = getByText('Confirm Vote');
-      expect(confirmButton.parent?.props.disabled).toBeTruthy();
-    });
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        voteCounts={voteCounts}
+      />
+    );
 
-    it('calls onVote when confirm button is pressed', () => {
-      const mockOnVote = jest.fn();
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} onVote={mockOnVote} />
-      );
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      fireEvent.press(aliceCard);
-      
-      const confirmButton = getByText('Confirm Vote');
-      fireEvent.press(confirmButton);
-      
-      expect(mockOnVote).toHaveBeenCalledWith('player-1');
-    });
-
-    it('shows voting state when confirming', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const aliceCard = getByText('Alice').parent?.parent?.parent;
-      fireEvent.press(aliceCard);
-      
-      const confirmButton = getByText('Confirm Vote');
-      fireEvent.press(confirmButton);
-      
-      expect(getByText('Voting...')).toBeTruthy();
-    });
-
-    it('does not call onVote when already voted', () => {
-      const mockOnVote = jest.fn();
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          onVote={mockOnVote}
-          hasVoted={true}
-          currentVote="player-1"
-        />
-      );
-      
-      // Confirm button should not be visible when already voted
-      expect(() => getByText('Confirm Vote')).toThrow();
-      expect(mockOnVote).not.toHaveBeenCalled();
-    });
+    expect(screen.getByText('2 votes')).toBeTruthy();
+    expect(screen.getByText('1 vote')).toBeTruthy();
   });
 
-  describe('Skip Vote', () => {
-    it('calls onSkip when skip button is pressed', () => {
-      const mockOnSkip = jest.fn();
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          onSkip={mockOnSkip}
-          allowSkip={true}
-        />
-      );
-      
-      const skipButton = getByText('Skip Vote');
-      fireEvent.press(skipButton);
-      
-      expect(mockOnSkip).toHaveBeenCalledTimes(1);
-    });
+  it('handles empty eligible targets', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={[]}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('does not call onSkip when already voted', () => {
-      const mockOnSkip = jest.fn();
-      const { queryByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          onSkip={mockOnSkip}
-          hasVoted={true}
-          allowSkip={true}
-        />
-      );
-      
-      // Skip button should not be visible when already voted
-      expect(queryByText('Skip Vote')).toBeNull();
-      expect(mockOnSkip).not.toHaveBeenCalled();
-    });
+    expect(screen.getByText('No eligible targets')).toBeTruthy();
+    expect(screen.queryByText('Skip Vote')).toBeNull();
   });
 
-  describe('Vote Status Display', () => {
-    it('shows waiting message when voted', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} hasVoted={true} />
-      );
-      
-      expect(getByText('You have voted. Waiting for other players...')).toBeTruthy();
-    });
+  it('shows different UI for night phase voting', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        phase="night"
+      />
+    );
 
-    it('shows current vote when voted', () => {
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          hasVoted={true}
-          currentVote="player-1"
-        />
-      );
-      
-      expect(getByText('You voted for: Alice')).toBeTruthy();
-    });
-
-    it('does not show vote status when not voted', () => {
-      const { queryByText } = render(<VotingInterface {...defaultProps} />);
-      
-      expect(queryByText('You have voted. Waiting for other players...')).toBeNull();
-      expect(queryByText(/You voted for:/)).toBeNull();
-    });
-
-    it('hides action buttons when voted', () => {
-      const { queryByText } = render(
-        <VotingInterface {...defaultProps} hasVoted={true} />
-      );
-      
-      expect(queryByText('Confirm Vote')).toBeNull();
-      expect(queryByText('Skip Vote')).toBeNull();
-    });
+    expect(screen.getByText('Choose Target')).toBeTruthy();
+    expect(screen.queryByText('Skip Vote')).toBeNull(); // No skip option in night phase
   });
 
-  describe('Current Vote Initialization', () => {
-    it('initializes with current vote selection', () => {
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          currentVote="player-2"
-          hasVoted={false}
-        />
-      );
-      
-      // Bob should be pre-selected
-      expect(getByText('Bob')).toBeTruthy();
-    });
+  it('updates timer countdown', () => {
+    jest.useFakeTimers();
+    
+    const { rerender } = render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+      />
+    );
 
-    it('updates selection when currentVote prop changes', () => {
-      const { rerender, getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          currentVote="player-1"
-          hasVoted={false}
-        />
-      );
-      
-      expect(getByText('Alice')).toBeTruthy();
-      
+    expect(screen.getByText('Time remaining: 1:00')).toBeTruthy();
+
+    // Simulate time passing
+    act(() => {
       rerender(
-        <VotingInterface 
-          {...defaultProps} 
-          currentVote="player-2"
-          hasVoted={false}
+        <VotingInterface
+          eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+          timeRemaining={59}
+          onVote={mockOnVote}
+          onSkip={mockOnSkip}
         />
       );
-      
-      expect(getByText('Bob')).toBeTruthy();
     });
+
+    expect(screen.getByText('Time remaining: 0:59')).toBeTruthy();
+
+    jest.useRealTimers();
   });
 
-  describe('Edge Cases', () => {
-    it('handles empty eligible targets list', () => {
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          eligibleTargets={[]}
-        />
-      );
-      
-      expect(getByText('Cast Your Vote')).toBeTruthy();
-      expect(getByText('Select a player to eliminate:')).toBeTruthy();
-    });
+  it('shows confirmation dialog when voting', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        requireConfirmation={true}
+      />
+    );
 
-    it('handles missing onSkip prop', () => {
-      const { queryByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          onSkip={undefined}
-          allowSkip={true}
-        />
-      );
-      
-      // Skip button should still be visible but not functional
-      expect(queryByText('Skip Vote')).toBeTruthy();
-    });
+    const player1Card = screen.getByText('Player1');
+    fireEvent.press(player1Card);
 
-    it('handles zero time remaining', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={0} />
-      );
-      
-      expect(getByText('0:00')).toBeTruthy();
-    });
-
-    it('handles negative time remaining', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} timeRemaining={-5} />
-      );
-      
-      // Should handle gracefully, likely showing 0:00 or similar
-      expect(getByText('Cast Your Vote')).toBeTruthy();
-    });
-
-    it('handles currentVote for non-existent player', () => {
-      const { getByText } = render(
-        <VotingInterface 
-          {...defaultProps} 
-          currentVote="non-existent-player"
-          hasVoted={true}
-        />
-      );
-      
-      expect(getByText('You have voted. Waiting for other players...')).toBeTruthy();
-      // Should not crash when trying to find non-existent player
-    });
+    expect(screen.getByText('Confirm Vote')).toBeTruthy();
+    expect(screen.getByText('Are you sure you want to vote for Player1?')).toBeTruthy();
+    expect(screen.getByText('Confirm')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
   });
 
-  describe('Accessibility', () => {
-    it('provides accessible timer information', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const timer = getByText('1:00');
-      const timerLabel = getByText('remaining');
-      
-      expect(timer.props.accessible).not.toBe(false);
-      expect(timerLabel.props.accessible).not.toBe(false);
-    });
+  it('handles vote confirmation', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        requireConfirmation={true}
+      />
+    );
 
-    it('provides accessible voting instructions', () => {
-      const { getByText } = render(<VotingInterface {...defaultProps} />);
-      
-      const instructions = getByText('Select a player to eliminate:');
-      expect(instructions.props.accessible).not.toBe(false);
-    });
+    const player1Card = screen.getByText('Player1');
+    fireEvent.press(player1Card);
 
-    it('provides accessible button labels', () => {
-      const { getByText } = render(
-        <VotingInterface {...defaultProps} allowSkip={true} />
-      );
-      
-      const confirmButton = getByText('Confirm Vote');
-      const skipButton = getByText('Skip Vote');
-      
-      expect(confirmButton.props.accessible).not.toBe(false);
-      expect(skipButton.props.accessible).not.toBe(false);
-    });
+    const confirmButton = screen.getByText('Confirm');
+    fireEvent.press(confirmButton);
+
+    expect(mockOnVote).toHaveBeenCalledWith('player-1');
+  });
+
+  it('handles vote cancellation', () => {
+    render(
+      <VotingInterface
+        eligibleTargets={mockPlayers.filter(p => p.isAlive)}
+        timeRemaining={60}
+        onVote={mockOnVote}
+        onSkip={mockOnSkip}
+        requireConfirmation={true}
+      />
+    );
+
+    const player1Card = screen.getByText('Player1');
+    fireEvent.press(player1Card);
+
+    const cancelButton = screen.getByText('Cancel');
+    fireEvent.press(cancelButton);
+
+    expect(mockOnVote).not.toHaveBeenCalled();
+    expect(screen.queryByText('Confirm Vote')).toBeNull();
   });
 });

@@ -94,23 +94,28 @@ const Reanimated = {
 
   // Animated component creator
   createAnimatedComponent: (Component) => {
+    const React = require('react');
+    
     if (typeof Component === 'string') {
       // For string components like 'View', 'Text', etc.
-      const AnimatedComponent = (props) => {
-        const React = require('react');
-        const { View } = require('react-native');
-        return React.createElement(View, props);
-      };
+      const AnimatedComponent = React.forwardRef((props, ref) => {
+        return React.createElement(Component, { ...props, ref });
+      });
       AnimatedComponent.displayName = `Animated(${Component})`;
       return AnimatedComponent;
     }
     
-    // For actual component functions
-    const AnimatedComponent = (props) => {
-      return Component(props);
-    };
-    AnimatedComponent.displayName = `Animated(${Component.displayName || Component.name || 'Component'})`;
-    return AnimatedComponent;
+    if (typeof Component === 'function') {
+      // For actual component functions
+      const AnimatedComponent = React.forwardRef((props, ref) => {
+        return React.createElement(Component, { ...props, ref });
+      });
+      AnimatedComponent.displayName = `Animated(${Component.displayName || Component.name || 'Component'})`;
+      return AnimatedComponent;
+    }
+    
+    // Fallback
+    return Component;
   },
 
   // Default animated components

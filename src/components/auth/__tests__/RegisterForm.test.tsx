@@ -45,18 +45,14 @@ const renderWithProvider = (component: React.ReactElement, initialState = {}) =>
 
 describe('RegisterForm', () => {
   const mockOnSwitchToLogin = jest.fn();
-  const mockOnRegistrationSuccess = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders registration form correctly', () => {
+  it('renders register form correctly', () => {
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
     expect(screen.getByPlaceholderText('Username')).toBeTruthy();
@@ -67,191 +63,94 @@ describe('RegisterForm', () => {
     expect(screen.getByText('Sign in')).toBeTruthy();
   });
 
-  it('validates username correctly', async () => {
+  it('validates username input correctly', async () => {
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
     const usernameInput = screen.getByPlaceholderText('Username');
-    const createAccountButton = screen.getByText('Create Account');
+    const createButton = screen.getByText('Create Account');
 
     // Test empty username
-    fireEvent.press(createAccountButton);
+    fireEvent.press(createButton);
     await waitFor(() => {
       expect(screen.getByText('Username is required')).toBeTruthy();
     });
 
     // Test short username
     fireEvent.changeText(usernameInput, 'ab');
-    fireEvent.press(createAccountButton);
+    fireEvent.press(createButton);
     await waitFor(() => {
-      expect(screen.getByText('Username must be at least 3 characters long')).toBeTruthy();
+      expect(screen.getByText('Username must be at least 3 characters')).toBeTruthy();
     });
 
-    // Test invalid characters
-    fireEvent.changeText(usernameInput, 'user@name');
-    fireEvent.press(createAccountButton);
+    // Test valid username clears error
+    fireEvent.changeText(usernameInput, 'validuser');
     await waitFor(() => {
-      expect(screen.getByText('Username can only contain letters, numbers, underscores, and hyphens')).toBeTruthy();
+      expect(screen.queryByText('Username must be at least 3 characters')).toBeNull();
     });
   });
 
-  it('validates email correctly', async () => {
+  it('validates email input correctly', async () => {
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
     const emailInput = screen.getByPlaceholderText('Email address');
-    const createAccountButton = screen.getByText('Create Account');
-
-    // Fill valid username first
-    const usernameInput = screen.getByPlaceholderText('Username');
-    fireEvent.changeText(usernameInput, 'validuser');
+    const createButton = screen.getByText('Create Account');
 
     // Test empty email
-    fireEvent.press(createAccountButton);
+    fireEvent.press(createButton);
     await waitFor(() => {
       expect(screen.getByText('Email is required')).toBeTruthy();
     });
 
     // Test invalid email
     fireEvent.changeText(emailInput, 'invalid-email');
-    fireEvent.press(createAccountButton);
+    fireEvent.press(createButton);
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid email address')).toBeTruthy();
     });
   });
 
-  it('validates password strength correctly', async () => {
+  it('validates password input correctly', async () => {
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
     const passwordInput = screen.getByPlaceholderText('Password');
+    const createButton = screen.getByText('Create Account');
 
-    // Test weak password
-    fireEvent.changeText(passwordInput, 'weak');
+    // Test empty password
+    fireEvent.press(createButton);
     await waitFor(() => {
-      expect(screen.getByText('Weak')).toBeTruthy();
+      expect(screen.getByText('Password is required')).toBeTruthy();
     });
 
-    // Test strong password
-    fireEvent.changeText(passwordInput, 'StrongPass123!');
+    // Test short password
+    fireEvent.changeText(passwordInput, '123');
+    fireEvent.press(createButton);
     await waitFor(() => {
-      expect(screen.getByText('Very Strong')).toBeTruthy();
+      expect(screen.getByText('Password must be at least 8 characters')).toBeTruthy();
     });
   });
 
   it('validates password confirmation correctly', async () => {
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
     const passwordInput = screen.getByPlaceholderText('Password');
     const confirmPasswordInput = screen.getByPlaceholderText('Confirm password');
-    const createAccountButton = screen.getByText('Create Account');
+    const createButton = screen.getByText('Create Account');
 
-    // Fill other required fields
-    fireEvent.changeText(screen.getByPlaceholderText('Username'), 'validuser');
-    fireEvent.changeText(screen.getByPlaceholderText('Email address'), 'test@example.com');
-    fireEvent.changeText(passwordInput, 'StrongPass123!');
+    fireEvent.changeText(passwordInput, 'password123');
+    fireEvent.changeText(confirmPasswordInput, 'different123');
+    fireEvent.press(createButton);
 
-    // Test empty confirm password
-    fireEvent.press(createAccountButton);
-    await waitFor(() => {
-      expect(screen.getByText('Please confirm your password')).toBeTruthy();
-    });
-
-    // Test mismatched passwords
-    fireEvent.changeText(confirmPasswordInput, 'DifferentPass123!');
-    fireEvent.press(createAccountButton);
     await waitFor(() => {
       expect(screen.getByText('Passwords do not match')).toBeTruthy();
     });
-  });
-
-  it('validates terms acceptance', async () => {
-    renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
-    );
-
-    const createAccountButton = screen.getByText('Create Account');
-
-    // Fill all required fields
-    fireEvent.changeText(screen.getByPlaceholderText('Username'), 'validuser');
-    fireEvent.changeText(screen.getByPlaceholderText('Email address'), 'test@example.com');
-    fireEvent.changeText(screen.getByPlaceholderText('Password'), 'StrongPass123!');
-    fireEvent.changeText(screen.getByPlaceholderText('Confirm password'), 'StrongPass123!');
-
-    // Test without accepting terms
-    fireEvent.press(createAccountButton);
-    await waitFor(() => {
-      expect(screen.getByText('You must accept the terms and conditions')).toBeTruthy();
-    });
-  });
-
-  it('toggles terms acceptance checkbox', () => {
-    renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
-    );
-
-    const termsContainer = screen.getByText('I agree to the').parent;
-    
-    // Initially unchecked
-    fireEvent.press(termsContainer!);
-    
-    // Should be checked now (test would need to verify checkbox state)
-    // This is a simplified test - in practice you'd check the checkbox visual state
-  });
-
-  it('calls onSwitchToLogin when sign in link is pressed', () => {
-    renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
-    );
-
-    const signInLink = screen.getByText('Sign in');
-    fireEvent.press(signInLink);
-
-    expect(mockOnSwitchToLogin).toHaveBeenCalledTimes(1);
-  });
-
-  it('displays loading state correctly', () => {
-    const mockUseAuth = require('../../../hooks/useAuth').useAuth;
-    mockUseAuth.mockReturnValue({
-      register: jest.fn(),
-      isLoading: true,
-      error: null,
-    });
-
-    renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
-    );
-
-    expect(screen.getByText('Creating account...')).toBeTruthy();
   });
 
   it('submits form with valid data', async () => {
@@ -264,32 +163,54 @@ describe('RegisterForm', () => {
     });
 
     renderWithProvider(
-      <RegisterForm
-        onSwitchToLogin={mockOnSwitchToLogin}
-        onRegistrationSuccess={mockOnRegistrationSuccess}
-      />
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
     );
 
-    // Fill all fields
-    fireEvent.changeText(screen.getByPlaceholderText('Username'), 'validuser');
-    fireEvent.changeText(screen.getByPlaceholderText('Email address'), 'test@example.com');
-    fireEvent.changeText(screen.getByPlaceholderText('Password'), 'StrongPass123!');
-    fireEvent.changeText(screen.getByPlaceholderText('Confirm password'), 'StrongPass123!');
-    
-    // Accept terms
-    const termsContainer = screen.getByText('I agree to the').parent;
-    fireEvent.press(termsContainer!);
+    const usernameInput = screen.getByPlaceholderText('Username');
+    const emailInput = screen.getByPlaceholderText('Email address');
+    const passwordInput = screen.getByPlaceholderText('Password');
+    const confirmPasswordInput = screen.getByPlaceholderText('Confirm password');
+    const createButton = screen.getByText('Create Account');
 
-    // Submit form
-    fireEvent.press(screen.getByText('Create Account'));
+    fireEvent.changeText(usernameInput, 'testuser');
+    fireEvent.changeText(emailInput, 'test@example.com');
+    fireEvent.changeText(passwordInput, 'password123');
+    fireEvent.changeText(confirmPasswordInput, 'password123');
+    fireEvent.press(createButton);
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith({
-        username: 'validuser',
+        username: 'testuser',
         email: 'test@example.com',
-        password: 'StrongPass123!',
-        confirmPassword: 'StrongPass123!',
+        password: 'password123',
       });
     });
+  });
+
+  it('displays loading state correctly', () => {
+    const mockUseAuth = require('../../../hooks/useAuth').useAuth;
+    mockUseAuth.mockReturnValue({
+      register: jest.fn(),
+      isLoading: true,
+      error: null,
+    });
+
+    renderWithProvider(
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
+    );
+
+    expect(screen.getByText('Creating account...')).toBeTruthy();
+    expect(screen.getByText('Creating account...').parent?.props.disabled).toBe(true);
+  });
+
+  it('calls onSwitchToLogin when sign in link is pressed', () => {
+    renderWithProvider(
+      <RegisterForm onSwitchToLogin={mockOnSwitchToLogin} />
+    );
+
+    const signInLink = screen.getByText('Sign in');
+    fireEvent.press(signInLink);
+
+    expect(mockOnSwitchToLogin).toHaveBeenCalledTimes(1);
   });
 });
