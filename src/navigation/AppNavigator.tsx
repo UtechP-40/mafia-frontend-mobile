@@ -19,7 +19,7 @@ import {View,StyleSheet} from 'react-native'
 const Stack = createStackNavigator<RootStackParamList>();
 const styles = StyleSheet.create({
   container: {
-    height: '98%',
+    height: '100%',
     backgroundColor: '#000'
   },
   subContainer: {

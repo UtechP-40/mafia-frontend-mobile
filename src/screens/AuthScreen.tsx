@@ -156,6 +156,7 @@ export const AuthScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // height: '98%',
     backgroundColor: '#0f0f0f',
   },
   keyboardAvoid: {

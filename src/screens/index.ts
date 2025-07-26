@@ -7,3 +7,4 @@ export * from './RoomBrowserScreen';
 export * from './LobbyScreen';
 export * from './GameScreen';
 export * from './ResultsScreen';
+export * from './GameHistoryScreen';

@@ -18,11 +18,21 @@ import {
   selectFriendsList,
   selectFriendRequests,
   selectSearchResults,
+  selectFriendActivities,
+  selectFriendsLeaderboard,
   selectFriendsLoading as selectIsSearching,
+  selectActivitiesLoading,
+  selectLeaderboardLoading,
   selectFriendsError,
   fetchFriends,
   searchUsers,
   sendFriendRequest,
+  acceptFriendRequest,
+  declineFriendRequest,
+  removeFriend,
+  fetchFriendActivities,
+  fetchFriendsLeaderboard,
+  inviteFriendToGame,
   clearSearchResults,
   clearError as clearFriendsError
 } from '../store/slices/friendsSlice';
@@ -38,16 +48,28 @@ export const FriendsScreen: React.FC = () => {
   const friends = useSelector(selectFriendsList);
   const friendRequests = useSelector(selectFriendRequests);
   const searchResults = useSelector(selectSearchResults);
+  const friendActivities = useSelector(selectFriendActivities);
+  const friendsLeaderboard = useSelector(selectFriendsLeaderboard);
   const isSearching = useSelector(selectIsSearching);
+  const isLoadingActivities = useSelector(selectActivitiesLoading);
+  const isLoadingLeaderboard = useSelector(selectLeaderboardLoading);
   const error = useSelector(selectFriendsError);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search' | 'activities' | 'leaderboard'>('friends');
 
   useEffect(() => {
     dispatch(setCurrentScreen('Friends'));
     dispatch(fetchFriends());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (activeTab === 'activities') {
+      dispatch(fetchFriendActivities());
+    } else if (activeTab === 'leaderboard') {
+      dispatch(fetchFriendsLeaderboard());
+    }
+  }, [activeTab, dispatch]);
 
   useEffect(() => {
     if (error) {
@@ -83,19 +105,38 @@ export const FriendsScreen: React.FC = () => {
   };
 
   const handleAcceptFriendRequest = (requestId: string, username: string) => {
-    // TODO: Implement friend request acceptance when backend API is ready
-    dispatch(addNotification({
-      message: 'Friend request features coming soon!',
-      type: 'info'
-    }));
+    dispatch(acceptFriendRequest(requestId))
+      .unwrap()
+      .then(() => {
+        dispatch(addNotification({
+          message: `Friend request from ${username} accepted`,
+          type: 'success'
+        }));
+        dispatch(fetchFriends()); // Refresh friends list
+      })
+      .catch((error) => {
+        dispatch(addNotification({
+          message: error || 'Failed to accept friend request',
+          type: 'error'
+        }));
+      });
   };
 
   const handleDeclineFriendRequest = (requestId: string) => {
-    // TODO: Implement friend request decline when backend API is ready
-    dispatch(addNotification({
-      message: 'Friend request features coming soon!',
-      type: 'info'
-    }));
+    dispatch(declineFriendRequest(requestId))
+      .unwrap()
+      .then(() => {
+        dispatch(addNotification({
+          message: 'Friend request declined',
+          type: 'success'
+        }));
+      })
+      .catch((error) => {
+        dispatch(addNotification({
+          message: error || 'Failed to decline friend request',
+          type: 'error'
+        }));
+      });
   };
 
   const handleRemoveFriend = (friendId: string, username: string) => {
@@ -108,15 +149,32 @@ export const FriendsScreen: React.FC = () => {
           text: 'Remove',
           style: 'destructive',
           onPress: () => {
-            // TODO: Implement friend removal when backend API is ready
-            dispatch(addNotification({
-              message: 'Friend removal features coming soon!',
-              type: 'info'
-            }));
+            dispatch(removeFriend(friendId))
+              .unwrap()
+              .then(() => {
+                dispatch(addNotification({
+                  message: `${username} removed from friends`,
+                  type: 'success'
+                }));
+              })
+              .catch((error) => {
+                dispatch(addNotification({
+                  message: error || 'Failed to remove friend',
+                  type: 'error'
+                }));
+              });
           }
         }
       ]
     );
+  };
+
+  const handleInviteFriend = (friendId: string, friendUsername: string) => {
+    // For now, show a placeholder message since we need room context
+    dispatch(addNotification({
+      message: `Game invitation feature will be available when in a room`,
+      type: 'info'
+    }));
   };
 
   const handleClearSearch = () => {
@@ -170,7 +228,10 @@ export const FriendsScreen: React.FC = () => {
             <Ionicons name="person-remove-outline" size={20} color="#ef4444" />
           </TouchableOpacity>
         ) : (
-          <TouchableOpacity style={styles.inviteButton}>
+          <TouchableOpacity 
+            style={styles.inviteButton}
+            onPress={() => handleInviteFriend(friend.id, friend.username)}
+          >
             <Ionicons name="game-controller-outline" size={20} color="#6366f1" />
           </TouchableOpacity>
         )}
@@ -234,6 +295,103 @@ export const FriendsScreen: React.FC = () => {
     </View>
   );
 
+  const renderActivityItem = (activity: any) => {
+    const getActivityIcon = (type: string) => {
+      switch (type) {
+        case 'game_completed': return 'game-controller-outline';
+        case 'achievement_unlocked': return 'trophy-outline';
+        case 'status_change': return 'person-outline';
+        default: return 'pulse-outline';
+      }
+    };
+
+    const getActivityText = (activity: any) => {
+      switch (activity.type) {
+        case 'game_completed':
+          return `${activity.friendUsername} ${activity.data.result === 'win' ? 'won' : 'lost'} a game as ${activity.data.role}`;
+        case 'achievement_unlocked':
+          return `${activity.friendUsername} unlocked "${activity.data.achievementName}"`;
+        case 'status_change':
+          return `${activity.friendUsername} is now ${activity.data.status}`;
+        default:
+          return `${activity.friendUsername} had some activity`;
+      }
+    };
+
+    const getTimeAgo = (timestamp: string) => {
+      const now = new Date();
+      const activityTime = new Date(timestamp);
+      const diffInMinutes = Math.floor((now.getTime() - activityTime.getTime()) / (1000 * 60));
+      
+      if (diffInMinutes < 1) return 'Just now';
+      if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+      return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    };
+
+    return (
+      <View key={activity.id} style={styles.activityItem}>
+        <View style={styles.activityIcon}>
+          <Ionicons name={getActivityIcon(activity.type)} size={20} color="#6366f1" />
+        </View>
+        <View style={styles.activityContent}>
+          <Text style={styles.activityText}>{getActivityText(activity)}</Text>
+          <Text style={styles.activityTime}>{getTimeAgo(activity.timestamp)}</Text>
+        </View>
+      </View>
+    );
+  };
+
+  const renderLeaderboardItem = (friend: any, index: number) => {
+    const getRankIcon = (rank: number) => {
+      switch (rank) {
+        case 0: return '🥇';
+        case 1: return '🥈';
+        case 2: return '🥉';
+        default: return `${rank + 1}`;
+      }
+    };
+
+    const getRankColor = (rank: number) => {
+      switch (rank) {
+        case 0: return '#ffd700';
+        case 1: return '#c0c0c0';
+        case 2: return '#cd7f32';
+        default: return '#9ca3af';
+      }
+    };
+
+    return (
+      <View key={friend.id} style={styles.leaderboardItem}>
+        <View style={styles.rankContainer}>
+          <Text style={[styles.rankText, { color: getRankColor(index) }]}>
+            {getRankIcon(index)}
+          </Text>
+        </View>
+        <View style={styles.friendInfo}>
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {friend.username.charAt(0).toUpperCase()}
+            </Text>
+            <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(friend.status || 'offline') }]} />
+          </View>
+          <View style={styles.friendDetails}>
+            <Text style={styles.friendName}>{friend.username}</Text>
+            <Text style={styles.friendStatus}>
+              {friend.statistics?.winRate ? `${Math.round(friend.statistics.winRate * 100)}% win rate` : 'No games played'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.statsContainer}>
+          <Text style={styles.eloText}>
+            {friend.statistics?.eloRating || 1000}
+          </Text>
+          <Text style={styles.eloLabel}>ELO</Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -246,7 +404,12 @@ export const FriendsScreen: React.FC = () => {
       </View>
 
       {/* Tab Navigation */}
-      <View style={styles.tabContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.tabScrollContainer}
+        contentContainerStyle={styles.tabContainer}
+      >
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
           onPress={() => setActiveTab('friends')}
@@ -264,6 +427,22 @@ export const FriendsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
+          style={[styles.tab, activeTab === 'activities' && styles.activeTab]}
+          onPress={() => setActiveTab('activities')}
+        >
+          <Text style={[styles.tabText, activeTab === 'activities' && styles.activeTabText]}>
+            Activity
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'leaderboard' && styles.activeTab]}
+          onPress={() => setActiveTab('leaderboard')}
+        >
+          <Text style={[styles.tabText, activeTab === 'leaderboard' && styles.activeTabText]}>
+            Leaderboard
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
           style={[styles.tab, activeTab === 'search' && styles.activeTab]}
           onPress={() => setActiveTab('search')}
         >
@@ -271,7 +450,7 @@ export const FriendsScreen: React.FC = () => {
             Search
           </Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {activeTab === 'friends' && (
@@ -362,6 +541,52 @@ export const FriendsScreen: React.FC = () => {
             )}
           </>
         )}
+
+        {activeTab === 'activities' && (
+          <Card>
+            {isLoadingActivities ? (
+              <View style={styles.loadingState}>
+                <Text style={styles.loadingText}>Loading activities...</Text>
+              </View>
+            ) : friendActivities.length > 0 ? (
+              <View style={styles.activitiesList}>
+                <Text style={styles.sectionTitle}>Friend Activity</Text>
+                {friendActivities.map((activity) => renderActivityItem(activity))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="pulse-outline" size={64} color="#6b7280" />
+                <Text style={styles.emptyStateText}>No recent activity</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Friend activities will appear here
+                </Text>
+              </View>
+            )}
+          </Card>
+        )}
+
+        {activeTab === 'leaderboard' && (
+          <Card>
+            {isLoadingLeaderboard ? (
+              <View style={styles.loadingState}>
+                <Text style={styles.loadingText}>Loading leaderboard...</Text>
+              </View>
+            ) : friendsLeaderboard.length > 0 ? (
+              <View style={styles.leaderboardList}>
+                <Text style={styles.sectionTitle}>Friends Leaderboard</Text>
+                {friendsLeaderboard.map((friend, index) => renderLeaderboardItem(friend, index))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="trophy-outline" size={64} color="#6b7280" />
+                <Text style={styles.emptyStateText}>No leaderboard data</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Play games with friends to see rankings
+                </Text>
+              </View>
+            )}
+          </Card>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -393,17 +618,16 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#2d2d2d',
-    marginHorizontal: 16,
-    marginVertical: 8,
     borderRadius: 8,
     padding: 4,
+    minWidth: '100%',
   },
   tab: {
-    flex: 1,
     paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     borderRadius: 6,
     alignItems: 'center',
+    marginRight: 4,
   },
   activeTab: {
     backgroundColor: '#6366f1',
@@ -570,5 +794,77 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  tabScrollContainer: {
+    marginHorizontal: 16,
+    marginVertical: 8,
+  },
+  loadingState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#9ca3af',
+  },
+  activitiesList: {
+    gap: 12,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 8,
+  },
+  activityIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#374151',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  activityContent: {
+    flex: 1,
+  },
+  activityText: {
+    fontSize: 14,
+    color: '#ffffff',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#9ca3af',
+  },
+  leaderboardList: {
+    gap: 12,
+  },
+  leaderboardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  rankContainer: {
+    width: 40,
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rankText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  statsContainer: {
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  eloText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#ffffff',
+  },
+  eloLabel: {
+    fontSize: 12,
+    color: '#9ca3af',
   },
 });
