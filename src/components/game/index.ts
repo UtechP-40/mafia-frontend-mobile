@@ -6,3 +6,6 @@ export * from "./ChatInterface";
 export * from "./GamePhaseIndicator";
 export * from "./ActionButtons";
 export * from "./EliminationAnimation";
+export * from "./StatisticsChart";
+export * from "./AchievementCard";
+export * from "./AchievementNotification";

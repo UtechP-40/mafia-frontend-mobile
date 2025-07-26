@@ -6,6 +6,7 @@ import { gameSlice } from './slices/gameSlice';
 import { uiSlice } from './slices/uiSlice';
 import { friendsSlice } from './slices/friendsSlice';
 import { roomsSlice } from './slices/roomsSlice';
+import { offlineSlice } from './slices/offlineSlice';
 
 // Auth persistence config - persist most auth data
 const authPersistConfig: PersistConfig<any> = {
@@ -93,12 +94,31 @@ const roomsPersistConfig: PersistConfig<any> = {
   ],
 };
 
+// Offline persistence config - persist offline data and sync state
+const offlinePersistConfig: PersistConfig<any> = {
+  key: 'offline',
+  storage: AsyncStorage,
+  whitelist: [
+    'pendingActions', // Keep pending actions for sync
+    'offlineData', // Keep cached offline data
+    'lastSyncTime', // Keep last sync timestamp
+  ],
+  blacklist: [
+    'isOnline', // Don't persist online status (should detect on startup)
+    'syncInProgress', // Don't persist sync state
+    'conflictResolutions', // Don't persist conflicts (should resolve on startup)
+    'syncErrors', // Don't persist errors
+    'dataLoadingProgress', // Don't persist loading progress
+  ],
+};
+
 // Create persisted reducers
 const persistedAuthReducer = persistReducer(authPersistConfig, authSlice.reducer);
 const persistedGameReducer = persistReducer(gamePersistConfig, gameSlice.reducer);
 const persistedUIReducer = persistReducer(uiPersistConfig, uiSlice.reducer);
 const persistedFriendsReducer = persistReducer(friendsPersistConfig, friendsSlice.reducer);
 const persistedRoomsReducer = persistReducer(roomsPersistConfig, roomsSlice.reducer);
+const persistedOfflineReducer = persistReducer(offlinePersistConfig, offlineSlice.reducer);
 
 // Root reducer with persistence
 export const rootReducer = combineReducers({
@@ -107,6 +127,7 @@ export const rootReducer = combineReducers({
   ui: persistedUIReducer,
   friends: persistedFriendsReducer,
   rooms: persistedRoomsReducer,
+  offline: persistedOfflineReducer,
 });
 
 // Persistence configuration for the entire store
@@ -120,7 +141,15 @@ export const persistConfig: PersistConfig<any> = {
 // Helper function to clear all persisted data
 export const clearPersistedData = async () => {
   try {
-    await AsyncStorage.multiRemove(['persist:auth', 'persist:game', 'persist:ui', 'persist:root']);
+    await AsyncStorage.multiRemove([
+      'persist:auth', 
+      'persist:game', 
+      'persist:ui', 
+      'persist:friends',
+      'persist:rooms',
+      'persist:offline',
+      'persist:root'
+    ]);
     console.log('Persisted data cleared successfully');
   } catch (error) {
     console.error('Failed to clear persisted data:', error);

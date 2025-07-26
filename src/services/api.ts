@@ -275,6 +275,35 @@ class ApiService {
     }
   }
 
+  async getFriendActivities() {
+    try {
+      const response = await this.get('/players/friends/activities');
+      return response.data || [];
+    } catch (error) {
+      console.log('Friend activities API error:', error);
+      return [];
+    }
+  }
+
+  async getFriendsLeaderboard() {
+    try {
+      const response = await this.get('/players/friends/leaderboard');
+      return response.data || [];
+    } catch (error) {
+      console.log('Friends leaderboard API error:', error);
+      return [];
+    }
+  }
+
+  async inviteFriendToGame(friendId: string, roomId: string) {
+    try {
+      return this.post('/players/friends/invite', { friendId, roomId });
+    } catch (error) {
+      console.log('Invite friend to game API error:', error);
+      throw error;
+    }
+  }
+
   // Rooms API
   async getPublicRooms(filters?: any) {
     try {
@@ -333,6 +362,80 @@ class ApiService {
       return this.post('/matchmaking/leave');
     } catch (error) {
       console.log('Cancel quick match API error:', error);
+      throw error;
+    }
+  }
+
+  // Game Results and Statistics API
+  async getGameHistory(page = 1, limit = 10) {
+    try {
+      const response = await this.get(`/games/history?page=${page}&limit=${limit}`);
+      return response.data || { games: [], pagination: { page, limit, total: 0, pages: 0 } };
+    } catch (error) {
+      console.log('Game history API error:', error);
+      return { games: [], pagination: { page, limit, total: 0, pages: 0 } };
+    }
+  }
+
+  async getGameResults(gameId: string) {
+    try {
+      const response = await this.get(`/games/${gameId}/results`);
+      return response.data;
+    } catch (error) {
+      console.log('Game results API error:', error);
+      throw error;
+    }
+  }
+
+  async getPlayerStatistics(playerId?: string) {
+    try {
+      const endpoint = playerId ? `/games/stats/${playerId}` : '/games/stats';
+      const response = await this.get(endpoint);
+      return response.data;
+    } catch (error) {
+      console.log('Player statistics API error:', error);
+      throw error;
+    }
+  }
+
+  // Achievements API
+  async getPlayerAchievements(playerId?: string) {
+    try {
+      const endpoint = playerId ? `/games/achievements/${playerId}` : '/games/achievements';
+      const response = await this.get(endpoint);
+      return response.data || { unlocked: [], inProgress: [], available: [], totalUnlocked: 0, totalAvailable: 0 };
+    } catch (error) {
+      console.log('Player achievements API error:', error);
+      return { unlocked: [], inProgress: [], available: [], totalUnlocked: 0, totalAvailable: 0 };
+    }
+  }
+
+  async getRecentAchievements(playerId?: string) {
+    try {
+      const endpoint = playerId ? `/games/achievements/recent/${playerId}` : '/games/achievements/recent';
+      const response = await this.get(endpoint);
+      return response.data?.recentUnlocks || [];
+    } catch (error) {
+      console.log('Recent achievements API error:', error);
+      return [];
+    }
+  }
+
+  async markAchievementsAsRead(achievementIds: string[]) {
+    try {
+      return this.post('/games/achievements/mark-read', { achievementIds });
+    } catch (error) {
+      console.log('Mark achievements as read API error:', error);
+      throw error;
+    }
+  }
+
+  // Social Sharing API (placeholder for future implementation)
+  async shareGameResult(gameId: string, platform: 'twitter' | 'facebook' | 'instagram') {
+    try {
+      return this.post('/games/share', { gameId, platform });
+    } catch (error) {
+      console.log('Share game result API error:', error);
       throw error;
     }
   }

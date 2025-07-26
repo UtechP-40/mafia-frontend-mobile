@@ -1,16 +1,16 @@
-import { 
-  VoiceState, 
-  VoiceParticipant, 
-  VoiceSettings, 
-  ConnectionQuality, 
+import {
+  VoiceState,
+  VoiceParticipant,
+  VoiceSettings,
+  ConnectionQuality,
   AudioQuality,
   SignalingMessage,
   ICECandidateMessage,
   OfferAnswerMessage,
   VoiceStateUpdate,
-  AudioConstraints
-} from '../types/voice';
-import { EventEmitter } from 'events';
+  AudioConstraints,
+} from "../types/voice";
+import { EventEmitter } from "events";
 
 export class WebRTCService extends EventEmitter {
   private localStream: MediaStream | null = null;
@@ -26,9 +26,9 @@ export class WebRTCService extends EventEmitter {
 
   // ICE servers configuration
   private iceServers: RTCIceServer[] = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
   ];
 
   constructor() {
@@ -44,7 +44,7 @@ export class WebRTCService extends EventEmitter {
       enableEchoCancellation: true,
       enableAutoGainControl: true,
       audioQuality: AudioQuality.AUTO,
-      pushToTalkKey: undefined
+      pushToTalkKey: undefined,
     };
   }
 
@@ -60,50 +60,53 @@ export class WebRTCService extends EventEmitter {
       await this.initializeAudioContext();
       await this.requestMicrophonePermission();
       this.isInitialized = true;
-      this.emit('initialized');
+      this.emit("initialized");
     } catch (error) {
-      console.error('Failed to initialize WebRTC service:', error);
-      this.emit('error', error);
+      console.error("Failed to initialize WebRTC service:", error);
+      this.emit("error", error);
       throw error;
     }
   }
 
   private async initializeAudioContext(): Promise<void> {
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.audioContext = new (window.AudioContext ||
+        (window as any).webkitAudioContext)();
       this.analyser = this.audioContext.createAnalyser();
       this.analyser.fftSize = 256;
       this.analyser.smoothingTimeConstant = 0.8;
     } catch (error) {
-      console.error('Failed to initialize audio context:', error);
-      throw new Error('Audio context initialization failed');
+      console.error("Failed to initialize audio context:", error);
+      throw new Error("Audio context initialization failed");
     }
   }
 
   private async requestMicrophonePermission(): Promise<void> {
     try {
       const constraints = this.getAudioConstraints();
-      this.localStream = await navigator.mediaDevices.getUserMedia({ 
+      this.localStream = await navigator.mediaDevices.getUserMedia({
         audio: constraints,
-        video: false 
+        video: false,
       });
 
       if (this.audioContext && this.analyser) {
-        this.microphoneSource = this.audioContext.createMediaStreamSource(this.localStream);
+        this.microphoneSource = this.audioContext.createMediaStreamSource(
+          this.localStream
+        );
         this.microphoneSource.connect(this.analyser);
         this.startAudioLevelMonitoring();
       }
 
-      this.emit('localStreamReady', this.localStream);
+      this.emit("localStreamReady", this.localStream);
     } catch (error) {
-      console.error('Failed to get microphone permission:', error);
-      throw new Error('Microphone permission denied');
+      console.error("Failed to get microphone permission:", error);
+      throw new Error("Microphone permission denied");
     }
   }
 
   private getAudioConstraints(): AudioConstraints {
     const quality = this.voiceSettings.audioQuality;
-    
+
     let sampleRate: number;
     let channelCount = 1; // Mono for voice chat
 
@@ -126,7 +129,7 @@ export class WebRTCService extends EventEmitter {
       noiseSuppression: this.voiceSettings.enableNoiseSuppression,
       autoGainControl: this.voiceSettings.enableAutoGainControl,
       sampleRate,
-      channelCount
+      channelCount,
     };
   }
 
@@ -140,7 +143,7 @@ export class WebRTCService extends EventEmitter {
       if (!this.analyser) return;
 
       this.analyser.getByteFrequencyData(dataArray);
-      
+
       // Calculate RMS (Root Mean Square) for audio level
       let sum = 0;
       for (let i = 0; i < bufferLength; i++) {
@@ -150,11 +153,12 @@ export class WebRTCService extends EventEmitter {
       const audioLevel = rms / 255; // Normalize to 0-1
 
       // Determine if speaking based on threshold
-      const isSpeaking = audioLevel > this.voiceSettings.voiceActivationThreshold;
+      const isSpeaking =
+        audioLevel > this.voiceSettings.voiceActivationThreshold;
 
-      this.emit('audioLevelUpdate', {
+      this.emit("audioLevelUpdate", {
         audioLevel,
-        isSpeaking
+        isSpeaking,
       });
 
       // Continue monitoring
@@ -164,14 +168,16 @@ export class WebRTCService extends EventEmitter {
     updateAudioLevel();
   }
 
-  async createPeerConnection(remotePlayerId: string): Promise<RTCPeerConnection> {
+  async createPeerConnection(
+    remotePlayerId: string
+  ): Promise<RTCPeerConnection> {
     const peerConnection = new RTCPeerConnection({
-      iceServers: this.iceServers
+      iceServers: this.iceServers,
     });
 
     // Add local stream tracks
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => {
+      this.localStream.getTracks().forEach((track) => {
         peerConnection.addTrack(track, this.localStream!);
       });
     }
@@ -180,15 +186,18 @@ export class WebRTCService extends EventEmitter {
     peerConnection.ontrack = (event) => {
       const [remoteStream] = event.streams;
       this.remoteStreams.set(remotePlayerId, remoteStream);
-      this.emit('remoteStreamAdded', { playerId: remotePlayerId, stream: remoteStream });
+      this.emit("remoteStreamAdded", {
+        playerId: remotePlayerId,
+        stream: remoteStream,
+      });
     };
 
     // Handle ICE candidates
     peerConnection.onicecandidate = (event) => {
       if (event.candidate) {
-        this.emit('iceCandidate', {
+        this.emit("iceCandidate", {
           candidate: event.candidate,
-          remotePlayerId
+          remotePlayerId,
         });
       }
     };
@@ -197,14 +206,14 @@ export class WebRTCService extends EventEmitter {
     peerConnection.onconnectionstatechange = () => {
       const state = peerConnection.connectionState;
       const quality = this.getConnectionQuality(state);
-      
-      this.emit('connectionStateChange', {
+
+      this.emit("connectionStateChange", {
         playerId: remotePlayerId,
         state,
-        quality
+        quality,
       });
 
-      if (state === 'failed' || state === 'disconnected') {
+      if (state === "failed" || state === "disconnected") {
         this.handleConnectionFailure(remotePlayerId);
       }
     };
@@ -213,16 +222,18 @@ export class WebRTCService extends EventEmitter {
     return peerConnection;
   }
 
-  private getConnectionQuality(state: RTCPeerConnectionState): ConnectionQuality {
+  private getConnectionQuality(
+    state: RTCPeerConnectionState
+  ): ConnectionQuality {
     switch (state) {
-      case 'connected':
+      case "connected":
         return ConnectionQuality.EXCELLENT;
-      case 'connecting':
+      case "connecting":
         return ConnectionQuality.GOOD;
-      case 'new':
+      case "new":
         return ConnectionQuality.FAIR;
-      case 'disconnected':
-      case 'failed':
+      case "disconnected":
+      case "failed":
         return ConnectionQuality.DISCONNECTED;
       default:
         return ConnectionQuality.POOR;
@@ -230,23 +241,25 @@ export class WebRTCService extends EventEmitter {
   }
 
   private async handleConnectionFailure(remotePlayerId: string): Promise<void> {
-    console.log(`Connection failed for player ${remotePlayerId}, attempting to reconnect...`);
-    
+    console.log(
+      `Connection failed for player ${remotePlayerId}, attempting to reconnect...`
+    );
+
     // Clean up failed connection
     const peerConnection = this.peerConnections.get(remotePlayerId);
     if (peerConnection) {
       peerConnection.close();
       this.peerConnections.delete(remotePlayerId);
     }
-    
+
     this.remoteStreams.delete(remotePlayerId);
-    
+
     // Emit reconnection event
-    this.emit('connectionFailed', { playerId: remotePlayerId });
-    
+    this.emit("connectionFailed", { playerId: remotePlayerId });
+
     // Attempt to recreate connection after a delay
     setTimeout(() => {
-      this.emit('reconnectRequested', { playerId: remotePlayerId });
+      this.emit("reconnectRequested", { playerId: remotePlayerId });
     }, 2000);
   }
 
@@ -257,7 +270,10 @@ export class WebRTCService extends EventEmitter {
     return offer;
   }
 
-  async createAnswer(remotePlayerId: string, offer: RTCSessionDescription): Promise<RTCSessionDescription> {
+  async createAnswer(
+    remotePlayerId: string,
+    offer: RTCSessionDescription
+  ): Promise<RTCSessionDescription> {
     const peerConnection = await this.createPeerConnection(remotePlayerId);
     await peerConnection.setRemoteDescription(offer);
     const answer = await peerConnection.createAnswer();
@@ -265,14 +281,20 @@ export class WebRTCService extends EventEmitter {
     return answer;
   }
 
-  async handleAnswer(remotePlayerId: string, answer: RTCSessionDescription): Promise<void> {
+  async handleAnswer(
+    remotePlayerId: string,
+    answer: RTCSessionDescription
+  ): Promise<void> {
     const peerConnection = this.peerConnections.get(remotePlayerId);
     if (peerConnection) {
       await peerConnection.setRemoteDescription(answer);
     }
   }
 
-  async handleIceCandidate(remotePlayerId: string, candidate: RTCIceCandidate): Promise<void> {
+  async handleIceCandidate(
+    remotePlayerId: string,
+    candidate: RTCIceCandidate
+  ): Promise<void> {
     const peerConnection = this.peerConnections.get(remotePlayerId);
     if (peerConnection) {
       await peerConnection.addIceCandidate(candidate);
@@ -285,7 +307,7 @@ export class WebRTCService extends EventEmitter {
     const audioTrack = this.localStream.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !audioTrack.enabled;
-      this.emit('muteStateChanged', { isMuted: !audioTrack.enabled });
+      this.emit("muteStateChanged", { isMuted: !audioTrack.enabled });
       return !audioTrack.enabled;
     }
     return false;
@@ -297,31 +319,33 @@ export class WebRTCService extends EventEmitter {
     const audioTrack = this.localStream.getAudioTracks()[0];
     if (audioTrack) {
       audioTrack.enabled = !muted;
-      this.emit('muteStateChanged', { isMuted: muted });
+      this.emit("muteStateChanged", { isMuted: muted });
     }
   }
 
   isMuted(): boolean {
     if (!this.localStream) return true;
-    
+
     const audioTrack = this.localStream.getAudioTracks()[0];
     return audioTrack ? !audioTrack.enabled : true;
   }
 
   setPushToTalkActive(active: boolean): void {
     this.setMute(!active);
-    this.emit('pushToTalkStateChanged', { isPushToTalkActive: active });
+    this.emit("pushToTalkStateChanged", { isPushToTalkActive: active });
   }
 
   updateVoiceSettings(settings: Partial<VoiceSettings>): void {
     this.voiceSettings = { ...this.voiceSettings, ...settings };
-    this.emit('voiceSettingsUpdated', this.voiceSettings);
-    
+    this.emit("voiceSettingsUpdated", this.voiceSettings);
+
     // Apply settings that require stream restart
-    if (settings.enableNoiseSuppression !== undefined ||
-        settings.enableEchoCancellation !== undefined ||
-        settings.enableAutoGainControl !== undefined ||
-        settings.audioQuality !== undefined) {
+    if (
+      settings.enableNoiseSuppression !== undefined ||
+      settings.enableEchoCancellation !== undefined ||
+      settings.enableAutoGainControl !== undefined ||
+      settings.audioQuality !== undefined
+    ) {
       this.restartLocalStream();
     }
   }
@@ -330,22 +354,22 @@ export class WebRTCService extends EventEmitter {
     try {
       // Stop current stream
       if (this.localStream) {
-        this.localStream.getTracks().forEach(track => track.stop());
+        this.localStream.getTracks().forEach((track) => track.stop());
       }
 
       // Request new stream with updated constraints
       const constraints = this.getAudioConstraints();
-      this.localStream = await navigator.mediaDevices.getUserMedia({ 
+      this.localStream = await navigator.mediaDevices.getUserMedia({
         audio: constraints,
-        video: false 
+        video: false,
       });
 
       // Update all peer connections with new stream
       this.peerConnections.forEach(async (peerConnection, playerId) => {
-        const sender = peerConnection.getSenders().find(s => 
-          s.track && s.track.kind === 'audio'
-        );
-        
+        const sender = peerConnection
+          .getSenders()
+          .find((s) => s.track && s.track.kind === "audio");
+
         if (sender && this.localStream) {
           const audioTrack = this.localStream.getAudioTracks()[0];
           await sender.replaceTrack(audioTrack);
@@ -357,14 +381,16 @@ export class WebRTCService extends EventEmitter {
         if (this.microphoneSource) {
           this.microphoneSource.disconnect();
         }
-        this.microphoneSource = this.audioContext.createMediaStreamSource(this.localStream);
+        this.microphoneSource = this.audioContext.createMediaStreamSource(
+          this.localStream
+        );
         this.microphoneSource.connect(this.analyser);
       }
 
-      this.emit('localStreamUpdated', this.localStream);
+      this.emit("localStreamUpdated", this.localStream);
     } catch (error) {
-      console.error('Failed to restart local stream:', error);
-      this.emit('error', error);
+      console.error("Failed to restart local stream:", error);
+      this.emit("error", error);
     }
   }
 
@@ -386,7 +412,7 @@ export class WebRTCService extends EventEmitter {
 
     // Stop local stream
     if (this.localStream) {
-      this.localStream.getTracks().forEach(track => track.stop());
+      this.localStream.getTracks().forEach((track) => track.stop());
       this.localStream = null;
     }
 
@@ -407,7 +433,7 @@ export class WebRTCService extends EventEmitter {
     this.roomId = null;
     this.currentPlayerId = null;
 
-    this.emit('disconnected');
+    this.emit("disconnected");
   }
 
   // Utility methods for testing and monitoring
