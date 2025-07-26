@@ -114,3 +114,143 @@ export interface QuickMatchResult {
   playersFound: number;
   playersNeeded: number;
 }
+
+// Game Results and Statistics Types
+export interface GameResult {
+  game: {
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    settings: GameSettings;
+  };
+  matchStats: MatchStatistics;
+  playerPerformance: PlayerPerformance[];
+  gameEvents: GameEvent[];
+}
+
+export interface MatchStatistics {
+  duration: number;
+  totalPlayers: number;
+  eliminatedCount: number;
+  survivorCount: number;
+  totalVotes: number;
+  daysCycled: number;
+  winResult?: WinResult;
+}
+
+export interface PlayerPerformance {
+  player: {
+    id: string;
+    username: string;
+    avatar: string;
+    role?: GameRole;
+  };
+  wasEliminated: boolean;
+  eliminationDay?: number;
+  votesCast: number;
+  votesReceived: number;
+  survived: boolean;
+}
+
+export interface WinResult {
+  condition: 'mafia_win' | 'villager_win' | 'draw';
+  winningTeam: 'mafia' | 'villagers';
+  winningPlayers: string[];
+  reason: string;
+}
+
+export interface PlayerStatistics {
+  player: {
+    id: string;
+    username: string;
+    avatar: string;
+    statistics: PlayerStats;
+  };
+  roleStats: Record<string, number>;
+  streaks: {
+    current: number;
+    longest: number;
+  };
+  recentPerformance: RecentGamePerformance[];
+}
+
+export interface RecentGamePerformance {
+  gameId: string;
+  date: Date;
+  won: boolean;
+  role: GameRole;
+  duration: number;
+}
+
+// Achievement Types
+export interface Achievement {
+  id: string;
+  key: string;
+  name: string;
+  description: string;
+  type: AchievementType;
+  rarity: AchievementRarity;
+  icon: string;
+  requirement: {
+    type: string;
+    value: number;
+    conditions?: any;
+  };
+  reward: {
+    experience: number;
+    title?: string;
+  };
+  isActive: boolean;
+}
+
+export interface PlayerAchievement {
+  id: string;
+  playerId: string;
+  achievementId: Achievement;
+  unlockedAt?: Date;
+  progress: number;
+  isCompleted: boolean;
+  notificationSent: boolean;
+  completionPercentage: number;
+}
+
+export interface PlayerAchievements {
+  unlocked: PlayerAchievement[];
+  inProgress: PlayerAchievement[];
+  available: Achievement[];
+  totalUnlocked: number;
+  totalAvailable: number;
+}
+
+export type AchievementType = 
+  | 'games_played' 
+  | 'games_won' 
+  | 'win_streak' 
+  | 'role_mastery' 
+  | 'survival' 
+  | 'voting' 
+  | 'social' 
+  | 'special';
+
+export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary';
+
+// Game History Types
+export interface GameHistory {
+  games: GameHistoryItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+export interface GameHistoryItem {
+  id: string;
+  players: Player[];
+  eliminatedPlayers: Player[];
+  winResult?: WinResult;
+  createdAt: Date;
+  updatedAt: Date;
+  settings: GameSettings;
+}
