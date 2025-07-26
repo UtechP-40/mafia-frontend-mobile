@@ -22,11 +22,12 @@ module.exports = {
     }],
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@reduxjs/toolkit|react-redux|react-native|@react-native|@testing-library)/)',
+    'node_modules/(?!(@reduxjs/toolkit|react-redux|react-native|@react-native|@testing-library|react-native-reanimated)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$': 'identity-obj-proxy',
+    'react-native-reanimated': '<rootDir>/src/__tests__/mocks/react-native-reanimated.js',
   },
   globals: {
     __DEV__: true,
