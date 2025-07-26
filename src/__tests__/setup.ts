@@ -5,12 +5,7 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
-// Mock react-native-reanimated
-jest.mock('react-native-reanimated', () => {
-  const Reanimated = require('react-native-reanimated/mock');
-  Reanimated.default.call = () => {};
-  return Reanimated;
-});
+// React Native Reanimated is mocked via Jest configuration
 
 // Mock react-native-gesture-handler
 jest.mock('react-native-gesture-handler', () => {
@@ -96,6 +91,61 @@ jest.mock('react-native-keychain', () => ({
   setInternetCredentials: jest.fn(() => Promise.resolve()),
   getInternetCredentials: jest.fn(() => Promise.resolve({ username: '', password: '' })),
   resetInternetCredentials: jest.fn(() => Promise.resolve()),
+}));
+
+// Mock NetInfo
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn(() => Promise.resolve({
+    isConnected: true,
+    isInternetReachable: true,
+    type: 'wifi',
+    details: {},
+  })),
+  addEventListener: jest.fn(() => jest.fn()),
+  useNetInfo: jest.fn(() => ({
+    isConnected: true,
+    isInternetReachable: true,
+    type: 'wifi',
+    details: {},
+  })),
+}));
+
+// Mock offline sync service
+jest.mock('../services/offlineSync', () => ({
+  offlineSyncService: {
+    getOnlineStatus: jest.fn(() => true),
+    addSyncListener: jest.fn(),
+    removeSyncListener: jest.fn(),
+    queueAction: jest.fn(() => Promise.resolve()),
+    syncOfflineActions: jest.fn(() => Promise.resolve()),
+    syncOfflineData: jest.fn(() => Promise.resolve()),
+    storeOfflineData: jest.fn(() => Promise.resolve()),
+    getOfflineData: jest.fn(() => Promise.resolve({})),
+    resolveConflict: jest.fn(() => Promise.resolve({})),
+    clearOfflineData: jest.fn(() => Promise.resolve()),
+    forceSync: jest.fn(() => Promise.resolve()),
+    getPendingActionsCount: jest.fn(() => 0),
+  },
+}));
+
+// Mock progressive loader service
+jest.mock('../services/progressiveLoader', () => ({
+  progressiveLoaderService: {
+    loadData: jest.fn(() => Promise.resolve(new Map())),
+    preloadCriticalData: jest.fn(() => Promise.resolve()),
+    loadGameData: jest.fn(() => Promise.resolve(new Map())),
+    loadSocialData: jest.fn(() => Promise.resolve(new Map())),
+    invalidateCache: jest.fn(),
+    clearCache: jest.fn(() => Promise.resolve()),
+    getCacheStats: jest.fn(() => ({
+      size: 0,
+      hitRate: 0,
+      totalRequests: 0,
+      cacheHits: 0,
+    })),
+    updateStrategy: jest.fn(),
+    prefetchData: jest.fn(() => Promise.resolve()),
+  },
 }));
 
 // Mock fetch for async thunks
