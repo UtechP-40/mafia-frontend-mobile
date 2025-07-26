@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { persistStore, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import { rootReducer, onPersistError } from './persistence';
 import { socketMiddleware } from './middleware/socketMiddleware';
+import { offlineMiddleware } from './middleware/offlineMiddleware';
 
 // Configure the store with persistence and middleware
 export const store = configureStore({
@@ -36,7 +37,7 @@ export const store = configureStore({
           // Add any extra arguments for thunks here
         },
       },
-    }).concat(socketMiddleware),
+    }).concat(socketMiddleware, offlineMiddleware),
   devTools: __DEV__ && {
     name: 'Mobile Mafia Game',
     trace: true,
