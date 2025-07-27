@@ -10,6 +10,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "jest e2e-integration --runInBand",
+    "test:e2e:auth": "jest auth-integration --runInBand",
+    "test:e2e:friends": "jest friends-integration --runInBand",
+    "test:e2e:game": "jest real-time-game --runInBand",
+    "test:e2e:all": "ts-node src/__tests__/run-e2e-tests.ts",
     "lint": "eslint src --ext .ts,.tsx",
     "type-check": "tsc --noEmit"
   },
